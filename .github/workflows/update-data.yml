@@ -1,0 +1,45 @@
+name: Update market data
+
+on:
+  schedule:
+    # Weekdays. DMO prices land in the evening; BoE curves for a day appear by the next
+    # working day, so the morning and midday runs pick those up.
+    - cron: "15 7,13,19 * * 1-5"
+  workflow_dispatch:
+    inputs:
+      backfill:
+        description: "Also download ~3 years of history (slow)"
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
+
+concurrency:
+  group: update-data
+  cancel-in-progress: false
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Fetch data
+        run: npm run fetch-data -- ${{ inputs.backfill && '--backfill' || '' }}
+      - name: Commit if changed
+        run: |
+          git add data
+          if git diff --cached --quiet; then
+            echo "No data changes"
+            exit 0
+          fi
+          git config user.name "gilt-monitor-bot"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -m "data: update $(date -u +%Y-%m-%dT%H:%MZ)"
+          git push
