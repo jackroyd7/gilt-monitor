@@ -55,7 +55,8 @@
    "cleanPrice": null,
    "dirtyPrice": null,
    "yield": null,
-   "amountInIssue": 14170.199
+   "amountInIssue": 14170.199,
+   "indexLag": 3
   },
   {
    "isin": "GB00B16NNR78",
@@ -110,7 +111,8 @@
    "cleanPrice": null,
    "dirtyPrice": null,
    "yield": null,
-   "amountInIssue": 17936.985
+   "amountInIssue": 17936.985,
+   "indexLag": 3
   },
   {
    "isin": "GB00BFX0ZL78",
@@ -154,7 +156,8 @@
    "cleanPrice": null,
    "dirtyPrice": null,
    "yield": null,
-   "amountInIssue": 15458.789
+   "amountInIssue": 15458.789,
+   "indexLag": 3
   },
   {
    "isin": "GB00BVP99566",
@@ -212,17 +215,6 @@
    "amountInIssue": 10000
   },
   {
-   "isin": "GB0008932666",
-   "name": "4 1/8% Index-linked Treasury Stock 2030",
-   "type": "index-linked",
-   "coupon": 4.125,
-   "maturity": "2030-07-22",
-   "cleanPrice": null,
-   "dirtyPrice": null,
-   "yield": null,
-   "amountInIssue": 4841.239
-  },
-  {
    "isin": "GB00BL68HH02",
    "name": "0 3/8% Treasury Gilt 2030",
    "type": "conventional",
@@ -275,7 +267,8 @@
    "cleanPrice": null,
    "dirtyPrice": null,
    "yield": null,
-   "amountInIssue": 17754.038
+   "amountInIssue": 17754.038,
+   "indexLag": 3
   },
   {
    "isin": "GB00BPSNBF73",
@@ -330,7 +323,8 @@
    "cleanPrice": null,
    "dirtyPrice": null,
    "yield": null,
-   "amountInIssue": 14656.667
+   "amountInIssue": 14656.667,
+   "indexLag": 3
   },
   {
    "isin": "GB00BMV7TC88",
@@ -374,7 +368,8 @@
    "cleanPrice": null,
    "dirtyPrice": null,
    "yield": null,
-   "amountInIssue": 18109.723
+   "amountInIssue": 18109.723,
+   "indexLag": 3
   },
   {
    "isin": "GB00BPJJKN53",
@@ -396,7 +391,8 @@
    "cleanPrice": null,
    "dirtyPrice": null,
    "yield": null,
-   "amountInIssue": 14570.332
+   "amountInIssue": 14570.332,
+   "indexLag": 3
   },
   {
    "isin": "GB00BQC82C90",
@@ -419,17 +415,6 @@
    "dirtyPrice": null,
    "yield": null,
    "amountInIssue": 39862.283
-  },
-  {
-   "isin": "GB0031790826",
-   "name": "2% Index-linked Treasury Stock 2035",
-   "type": "index-linked",
-   "coupon": 2,
-   "maturity": "2035-01-26",
-   "cleanPrice": null,
-   "dirtyPrice": null,
-   "yield": null,
-   "amountInIssue": 9083.989
   },
   {
    "isin": "GB00BT7J0027",
@@ -462,7 +447,8 @@
    "cleanPrice": null,
    "dirtyPrice": null,
    "yield": null,
-   "amountInIssue": 22087.95
+   "amountInIssue": 22087.95,
+   "indexLag": 3
   },
   {
    "isin": "GB00BTXS1K06",
@@ -506,7 +492,8 @@
    "cleanPrice": null,
    "dirtyPrice": null,
    "yield": null,
-   "amountInIssue": 13904.709
+   "amountInIssue": 13904.709,
+   "indexLag": 3
   },
   {
    "isin": "GB00BVP99905",
@@ -539,7 +526,8 @@
    "cleanPrice": null,
    "dirtyPrice": null,
    "yield": null,
-   "amountInIssue": 13065.68
+   "amountInIssue": 13065.68,
+   "indexLag": 3
   },
   {
    "isin": "GB00BQC4R999",
@@ -561,7 +549,8 @@
    "cleanPrice": null,
    "dirtyPrice": null,
    "yield": null,
-   "amountInIssue": 14500
+   "amountInIssue": 14500,
+   "indexLag": 3
   },
   {
    "isin": "GB00B00NY175",
@@ -594,7 +583,8 @@
    "cleanPrice": null,
    "dirtyPrice": null,
    "yield": null,
-   "amountInIssue": 14621.02
+   "amountInIssue": 14621.02,
+   "indexLag": 3
   },
   {
    "isin": "GB00B3KJDS62",
@@ -627,7 +617,8 @@
    "cleanPrice": null,
    "dirtyPrice": null,
    "yield": null,
-   "amountInIssue": 14090.029883
+   "amountInIssue": 14090.029883,
+   "indexLag": 3
   },
   {
    "isin": "GB00B6460505",
@@ -660,7 +651,8 @@
    "cleanPrice": null,
    "dirtyPrice": null,
    "yield": null,
-   "amountInIssue": 12446.999
+   "amountInIssue": 12446.999,
+   "indexLag": 3
   },
   {
    "isin": "GB00BJQWYH73",
@@ -682,7 +674,8 @@
    "cleanPrice": null,
    "dirtyPrice": null,
    "yield": null,
-   "amountInIssue": 12559.257
+   "amountInIssue": 12559.257,
+   "indexLag": 3
   },
   {
    "isin": "GB00B1VWPJ53",
@@ -726,7 +719,8 @@
    "cleanPrice": null,
    "dirtyPrice": null,
    "yield": null,
-   "amountInIssue": 15725.522
+   "amountInIssue": 15725.522,
+   "indexLag": 3
   },
   {
    "isin": "GB00BN65R313",
@@ -748,7 +742,8 @@
    "cleanPrice": null,
    "dirtyPrice": null,
    "yield": null,
-   "amountInIssue": 14336.648000000001
+   "amountInIssue": 14336.648000000001,
+   "indexLag": 3
   },
   {
    "isin": "GB00BNNGP775",
@@ -770,7 +765,8 @@
    "cleanPrice": null,
    "dirtyPrice": null,
    "yield": null,
-   "amountInIssue": 13485.56799999
+   "amountInIssue": 13485.56799999,
+   "indexLag": 3
   },
   {
    "isin": "GB00B128DP45",
@@ -803,7 +799,8 @@
    "cleanPrice": null,
    "dirtyPrice": null,
    "yield": null,
-   "amountInIssue": 11686.64
+   "amountInIssue": 11686.64,
+   "indexLag": 3
   },
   {
    "isin": "GB00BZ13DV40",
@@ -814,7 +811,8 @@
    "cleanPrice": null,
    "dirtyPrice": null,
    "yield": null,
-   "amountInIssue": 11780.815
+   "amountInIssue": 11780.815,
+   "indexLag": 3
   },
   {
    "isin": "GB00BFWFPP71",
@@ -836,7 +834,8 @@
    "cleanPrice": null,
    "dirtyPrice": null,
    "yield": null,
-   "amountInIssue": 8424.999
+   "amountInIssue": 8424.999,
+   "indexLag": 3
   },
   {
    "isin": "GB00B39R3707",
@@ -858,7 +857,8 @@
    "cleanPrice": null,
    "dirtyPrice": null,
    "yield": null,
-   "amountInIssue": 12221.183199
+   "amountInIssue": 12221.183199,
+   "indexLag": 3
   },
   {
    "isin": "GB00BMBL1F74",
@@ -880,7 +880,8 @@
    "cleanPrice": null,
    "dirtyPrice": null,
    "yield": null,
-   "amountInIssue": 11039.548999999997
+   "amountInIssue": 11039.548999999997,
+   "indexLag": 3
   },
   {
    "isin": "GB00BLH38158",
@@ -902,7 +903,8 @@
    "cleanPrice": null,
    "dirtyPrice": null,
    "yield": null,
-   "amountInIssue": 12666.02
+   "amountInIssue": 12666.02,
+   "indexLag": 3
   },
   {
    "isin": "GB00B6RNH572",
@@ -968,7 +970,8 @@
    "cleanPrice": null,
    "dirtyPrice": null,
    "yield": null,
-   "amountInIssue": 15050.075
+   "amountInIssue": 15050.075,
+   "indexLag": 3
   },
   {
    "isin": "GB00B0CNHZ09",
@@ -979,7 +982,8 @@
    "cleanPrice": null,
    "dirtyPrice": null,
    "yield": null,
-   "amountInIssue": 10169.1955
+   "amountInIssue": 10169.1955,
+   "indexLag": 3
   },
   {
    "isin": "GB00B06YGN05",
@@ -1012,7 +1016,8 @@
    "cleanPrice": null,
    "dirtyPrice": null,
    "yield": null,
-   "amountInIssue": 7146.605
+   "amountInIssue": 7146.605,
+   "indexLag": 3
   },
   {
    "isin": "GB00BD0XH204",
@@ -1034,7 +1039,8 @@
    "cleanPrice": null,
    "dirtyPrice": null,
    "yield": null,
-   "amountInIssue": 10953.298
+   "amountInIssue": 10953.298,
+   "indexLag": 3
   },
   {
    "isin": "GB00B54QLM75",
@@ -1067,7 +1073,8 @@
    "cleanPrice": null,
    "dirtyPrice": null,
    "yield": null,
-   "amountInIssue": 12471.937
+   "amountInIssue": 12471.937,
+   "indexLag": 3
   },
   {
    "isin": "GB00BMF9LF76",
@@ -1100,7 +1107,8 @@
    "cleanPrice": null,
    "dirtyPrice": null,
    "yield": null,
-   "amountInIssue": 8125
+   "amountInIssue": 8125,
+   "indexLag": 3
   },
   {
    "isin": "GB00BDX8CX86",
@@ -1111,7 +1119,8 @@
    "cleanPrice": null,
    "dirtyPrice": null,
    "yield": null,
-   "amountInIssue": 12600
+   "amountInIssue": 12600,
+   "indexLag": 3
   },
   {
    "isin": "GB00BBJNQY21",
@@ -1144,7 +1153,8 @@
    "cleanPrice": null,
    "dirtyPrice": null,
    "yield": null,
-   "amountInIssue": 5372.85
+   "amountInIssue": 5372.85,
+   "indexLag": 3
   },
   {
    "isin": "GB00BLBDX619",
