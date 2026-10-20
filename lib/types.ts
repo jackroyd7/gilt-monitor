@@ -39,6 +39,8 @@ export interface Gilt {
   yield: number | null;
   /** True when we computed the yield ourselves from the clean price. */
   yieldComputed?: boolean;
+  /** Price is intraday from giltsyield.com rather than the DMO close. */
+  live?: boolean;
   amountInIssue?: number | null; // £m nominal
 }
 

@@ -4,7 +4,9 @@ import { MonthlyBars } from "@/components/charts";
 import GiltTable from "@/components/GiltTable";
 import { Card, PageHeader } from "@/components/Tiles";
 import { giltRows } from "@/lib/analytics";
-import { loadMarket } from "@/lib/data";
+import LiveBar from "@/components/LiveBar";
+import { loadMarketWithLive } from "@/lib/data";
+import { liveInfo } from "@/lib/live";
 import { findKey, giltsYield, giltsYieldConfigured, portfolioRef, type Row } from "@/lib/giltsyield";
 
 const numOf = (v: unknown) => {
@@ -105,7 +107,7 @@ export default async function PortfolioPage({ searchParams }: PageProps<"/portfo
     settle(giltsYield.pl(selected.id)),
     settle(giltsYield.bookYield(selected.id)),
     settle(giltsYield.upcomingFlows(selected.id)),
-    loadMarket(),
+    loadMarketWithLive(),
   ]);
 
   // Join holdings to market analytics by ISIN.
@@ -123,7 +125,7 @@ export default async function PortfolioPage({ searchParams }: PageProps<"/portfo
   return (
     <>
       <PageHeader title={`Portfolio · ${selected.name}`}>
-        Live from giltsyield.com each time you load the page. Market columns come from the daily DMO and BoE data.
+        Holdings from giltsyield.com each time you load the page. Prices are intraday where available; curves and OIS are the latest BoE daily data.
       </PageHeader>
       {portfolios.length > 1 && (
         <div className="mb-4 flex flex-wrap gap-1.5 text-xs">
@@ -138,6 +140,7 @@ export default async function PortfolioPage({ searchParams }: PageProps<"/portfo
           ))}
         </div>
       )}
+      <LiveBar live={liveInfo(market.live)} />
       <div className="grid gap-4">
         <Card title="Holdings against the market" subtitle={isinKey ? "Your gilts, with today’s yield, curve and OIS spreads" : "Couldn’t find an ISIN column in the book-yield response to join on"}>
           {heldRows.length ? <GiltTable rows={heldRows} showHeld /> : <p className="text-sm text-muted">No holdings matched to DMO gilts.</p>}

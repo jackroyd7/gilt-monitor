@@ -193,3 +193,18 @@ export function giltRows(snap: GiltSnapshot | undefined, c: Curves) {
   });
   return { rows, fit, asOf };
 }
+
+/**
+ * Yields at fixed maturities read off a Nelson-Siegel fit to conventional gilt yields.
+ * Comparing the fit to intraday prices with the fit to the DMO close gives a live
+ * "how far has the curve moved today" without waiting for the BoE curve.
+ */
+export function fittedMoves(live: GiltSnapshot | undefined, close: GiltSnapshot | undefined, c: Curves, tenors: number[]) {
+  const fLive = giltRows(live, c).fit;
+  const fClose = close ? giltRows(close, c).fit : null;
+  return tenors.map((t) => {
+    const now = fLive ? nsValue(fLive, t) : null;
+    const prev = fClose ? nsValue(fClose, t) : null;
+    return { t, now, prev, chg: now != null && prev != null ? (now - prev) * 100 : null };
+  });
+}

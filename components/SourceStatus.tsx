@@ -28,7 +28,7 @@ export default async function SourceStatus() {
         <span className="text-muted">Checked {status.updatedAt.slice(0, 16).replace("T", " ")} UTC</span>
       </div>
       <p className="text-muted">
-        End-of-day data. Cross-market figures convert each source to semi-annual compounding; BoE and Bundesbank
+        Curves are end-of-day; gilt prices are intraday from giltsyield.com when connected. Cross-market figures convert each source to semi-annual compounding; BoE and Bundesbank
         are fitted zero curves, US Treasury is a par curve. Gilt − OIS is an asset-swap proxy, not a par-par
         asset swap spread.
       </p>

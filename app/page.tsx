@@ -1,8 +1,11 @@
+import { connection } from "next/server";
 import { SeriesChart, type Series } from "@/components/charts";
+import LiveBar from "@/components/LiveBar";
 import { Card, PageHeader, TileGrid } from "@/components/Tiles";
 import {
   comparisonDates,
   curveOnDates,
+  fittedMoves,
   headlineMetrics,
   metricSeries,
   rateMetric,
@@ -10,10 +13,13 @@ import {
   tile,
 } from "@/lib/analytics";
 import { latestDate } from "@/lib/curve";
-import { loadMarket } from "@/lib/data";
+import { loadMarketWithLive } from "@/lib/data";
+import { liveInfo } from "@/lib/live";
 
 export default async function Dashboard() {
-  const { curves: c } = await loadMarket();
+  await connection();
+  const { curves: c, gilts, dmoGilts, live } = await loadMarketWithLive();
+  const moves = live?.gilts.length ? fittedMoves(gilts, dmoGilts, c, [2, 5, 10, 30]) : [];
   const tiles = headlineMetrics(c).map(tile);
   const asOf = latestDate(c.uk_nominal);
 
@@ -43,6 +49,24 @@ export default async function Dashboard() {
       <PageHeader title={`UK gilts${asOf ? ` · ${asOf}` : ""}`}>
         Headline levels and moves. Changes are in basis points; ▲ means yields (or the spread) rose.
       </PageHeader>
+      {live && (
+        <>
+          <LiveBar live={liveInfo(live)} />
+          {moves.some((m) => m.now != null) && (
+            <div className="mb-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
+              {moves.map((m) => (
+                <div key={m.t} className="card p-3">
+                  <div className="text-xs text-ink-2">Gilt {m.t}y · intraday fit</div>
+                  <div className="mt-1 text-2xl font-semibold text-ink">{m.now == null ? "–" : `${m.now.toFixed(2)}%`}</div>
+                  <div className="num mt-0.5 text-xs text-ink-2">
+                    vs DMO close {m.chg == null ? "–" : `${m.chg > 0 ? "▲" : m.chg < 0 ? "▼" : ""}${Math.abs(m.chg).toFixed(1)}bp`}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </>
+      )}
       <TileGrid tiles={tiles} />
       <div className="mt-4 grid gap-4 lg:grid-cols-2">
         <Card title="Gilt nominal zero curve" subtitle="BoE fitted spot curve, latest vs a month earlier">

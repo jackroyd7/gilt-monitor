@@ -2,11 +2,15 @@ import { GiltScatter } from "@/components/charts";
 import GiltTable from "@/components/GiltTable";
 import { Card, PageHeader } from "@/components/Tiles";
 import { giltRows } from "@/lib/analytics";
-import { loadMarket } from "@/lib/data";
+import { connection } from "next/server";
+import LiveBar from "@/components/LiveBar";
+import { loadMarketWithLive } from "@/lib/data";
+import { liveInfo } from "@/lib/live";
 import { nsValue } from "@/lib/fit";
 
 export default async function GiltsPage() {
-  const { curves, gilts } = await loadMarket();
+  await connection(); // render per request so intraday prices are current
+  const { curves, gilts, live } = await loadMarketWithLive();
   const { rows, fit, asOf } = giltRows(gilts, curves);
   const conv = rows.filter((r) => r.type === "conventional" && r.yield != null);
   const maxT = Math.max(1, ...conv.map((r) => r.years));
@@ -17,9 +21,10 @@ export default async function GiltsPage() {
   return (
     <>
       <PageHeader title={`Gilts in issue${asOf ? ` · ${asOf}` : ""}`}>
-        DMO close-of-business prices. Each conventional gilt is compared with a Nelson-Siegel curve fitted to all
+        Prices are intraday from giltsyield.com where available, otherwise the DMO close. Each conventional gilt is compared with a Nelson-Siegel curve fitted to all
         conventionals over six months (index-linked gilts are in the table only). Positive “vs fit” means the gilt yields more than the curve (cheap).
       </PageHeader>
+      <LiveBar live={liveInfo(live)} />
       <div className="grid gap-4">
         <Card
           title="Yield vs maturity"

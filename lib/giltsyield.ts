@@ -6,7 +6,9 @@ import "server-only";
 
 const BASE = (process.env.GILTSYIELD_BASE_URL ?? "https://giltsyield.com").replace(/\/$/, "");
 
-export type Row = Record<string, unknown>;
+import type { Row } from "./live-parse";
+
+export { findKey, type Row } from "./live-parse";
 
 export class GiltsYieldError extends Error {}
 
@@ -23,7 +25,7 @@ async function call(pathname: string, params: Record<string, string> = {}): Prom
   const res = await fetch(url, {
     headers: { "X-API-Key": key, Accept: "application/json" },
     cache: "no-store",
-    signal: AbortSignal.timeout(20_000),
+    signal: AbortSignal.timeout(10_000),
   });
   if (!res.ok) throw new GiltsYieldError(`${res.status} ${res.statusText} from ${url.pathname}`);
   return res.json();
@@ -42,6 +44,12 @@ export function asRows(body: unknown): Row[] {
 const enc = encodeURIComponent;
 
 export const giltsYield = {
+  bonds: async () => asRows(await call("/api/bonds/")),
+  bondPrice: async (ticker: string) => {
+    const row = asRows(await call(`/api/bond/price/${enc(ticker)}/`))[0];
+    if (!row) throw new GiltsYieldError(`no price for ${ticker}`);
+    return row;
+  },
   portfolios: async () => asRows(await call("/api/portfolios/")),
   pl: async (p: string) => asRows(await call(`/api/portfolio/pl/${enc(p)}/`)),
   bookYield: async (p: string, lots = false) =>
@@ -62,12 +70,3 @@ export function portfolioRef(r: Row): { id: string; name: string } {
   return { id: String(id ?? ""), name: String(name ?? "") };
 }
 
-/** Finds the column whose name matches, case-insensitively. */
-export function findKey(rows: Row[], ...patterns: RegExp[]): string | undefined {
-  const keys = Object.keys(rows[0] ?? {});
-  for (const p of patterns) {
-    const k = keys.find((key) => p.test(key));
-    if (k) return k;
-  }
-  return undefined;
-}

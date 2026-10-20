@@ -3,12 +3,16 @@ import GiltTable from "@/components/GiltTable";
 import { Card, PageHeader, TileGrid } from "@/components/Tiles";
 import { giltRows, metricSeries, rateSA, spreadMetric, tile } from "@/lib/analytics";
 import { latestDate } from "@/lib/curve";
-import { loadMarket } from "@/lib/data";
+import { connection } from "next/server";
+import LiveBar from "@/components/LiveBar";
+import { loadMarketWithLive } from "@/lib/data";
+import { liveInfo } from "@/lib/live";
 
 const SLOTS = ["var(--series-1)", "var(--series-2)", "var(--series-3)", "var(--series-4)", "var(--series-5)"];
 
 export default async function SwapsPage() {
-  const { curves: c, gilts } = await loadMarket();
+  await connection();
+  const { curves: c, gilts, live } = await loadMarketWithLive();
   const ois = c.uk_ois;
   const maxOis = ois ? ois.tenors[ois.tenors.length - 1] : 0;
   const tenors = [2, 5, 10, 20, 30].filter((t) => t <= maxOis);
@@ -59,6 +63,7 @@ export default async function SwapsPage() {
         is a proxy for, not a calculation of, a par-par asset swap spread.
         {ois ? ` BoE OIS data currently runs to ${maxOis}y.` : ""}
       </PageHeader>
+      <LiveBar live={liveInfo(live)} />
       <TileGrid tiles={metrics.map(tile)} />
       <div className="mt-4 grid gap-4 lg:grid-cols-2">
         <Card title="Spread by maturity" subtitle={`Latest${last ? ` · ${last}` : ""}`}>

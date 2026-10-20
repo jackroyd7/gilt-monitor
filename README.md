@@ -7,6 +7,7 @@ A self-updating dashboard for UK gilts:
 - **Gilts**: every gilt in issue with DMO price, yield, modified duration, and rich/cheap against a Nelson-Siegel fit.
 - **vs OIS**: gilt − SONIA OIS by maturity, over time, and for each gilt (an asset-swap proxy).
 - **Cross-market**: gilts against Bunds and US Treasuries by maturity and over time.
+- **Intraday prices**: with a giltsyield.com key, gilt prices and yields refresh about every 10 minutes (their update rate), with a *Refresh prices* button. The dashboard adds 2/5/10/30y yields from a curve fitted to those prices, against the DMO close.
 - **Portfolio**: your giltsyield.com holdings, P&L, book yields and upcoming cash flows, joined to the market data.
 
 ## How it works
@@ -14,7 +15,8 @@ A self-updating dashboard for UK gilts:
 ```
 GitHub Action (weekdays 07:15 / 13:15 / 19:15 UTC)
   └─ npm run fetch-data ─► data/*.json ─► git commit ─► Vercel redeploys
-Browser ─► Vercel (password) ─► market pages read data/*.json
+Browser ─► Vercel (password) ─► curve pages read data/*.json (end of day)
+                             ├─ Dashboard, Gilts, vs OIS overlay intraday giltsyield.com prices (cached 5 min)
                              └─ Portfolio page calls giltsyield.com live with your key (server-side)
 ```
 
@@ -25,6 +27,7 @@ Browser ─► Vercel (password) ─► market pages read data/*.json
 | Gilts in issue and reference prices | UK Debt Management Office (D1A, D10B reports) | Close of business. If a yield is missing it is computed from the clean price (marked `*`) |
 | Bund zero curve | Bundesbank BBSIS (Svensson) | 1–30y |
 | US Treasury par curve | US Treasury daily par yield curve | 1m–30y |
+| Intraday gilt prices | giltsyield.com `/api/bonds/` + `/api/bond/price/<ticker>/` | ~10-minute updates; one call per gilt, 6 at a time, cached 5 min; DMO close fills any gaps |
 | Your portfolio | giltsyield.com API | Fetched live; never stored |
 
 Market data history is kept in `data/curves/*.json` (5 years by default, one line per day, so daily commits are small).
@@ -35,7 +38,8 @@ Market data history is kept in `data/curves/*.json` (5 years by default, one lin
 - Bund and gilt curves are **zero** curves; the Treasury curve is a **par** curve. On an upward-sloping curve a par yield sits a little below the zero rate, so gilt − UST spreads carry a few bp of shape difference.
 - **Gilt − OIS** on the curve pages compares the BoE gilt and OIS zero curves on the same basis. The per-gilt figure compares a bond's redemption yield with the OIS zero rate at its maturity. It is a relative-value **proxy**, not a par-par or z-spread asset swap. The OIS curve only extends as far as the BoE publishes it.
 - No free official €STR or SOFR swap curves are used, so there are no Bund or UST asset swaps.
-- Data is **end-of-day**: DMO prices the same evening, BoE curves by the next working day.
+- Curves are **end-of-day** (BoE by the next working day). Gilt prices are intraday when giltsyield.com is connected, otherwise the DMO close. The intraday fitted 2/5/10/30y yields are yield-to-maturity fits, so they are not identical to BoE zero rates; use their change vs the DMO close as the live move.
+- giltsyield.com also offers a SQL endpoint (`/api/query`, table `curves_quotes`) that could fetch all prices in one call. It is not used yet because its request format isn't documented to us.
 
 ## Setup
 

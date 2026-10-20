@@ -18,6 +18,7 @@ export interface GiltTableRow {
   bundSpread: number | null;
   ustSpread: number | null;
   held?: string; // e.g. holding size from the portfolio
+  live?: boolean;
 }
 
 type Col = { key: keyof GiltTableRow; label: string; fmt: (r: GiltTableRow) => string; title?: string };
@@ -35,6 +36,7 @@ const COLS: Col[] = [
   { key: "oisSpread", label: "vs OIS bp", fmt: (r) => f(r.oisSpread, 1), title: "Yield minus SONIA OIS at the same maturity (asset-swap proxy)" },
   { key: "bundSpread", label: "vs Bund bp", fmt: (r) => f(r.bundSpread, 1) },
   { key: "ustSpread", label: "vs UST bp", fmt: (r) => f(r.ustSpread, 1) },
+  { key: "live", label: "Price", fmt: (r) => (r.cleanPrice == null && r.yield == null ? "" : r.live ? "intraday" : "close"), title: "intraday = giltsyield.com, close = DMO close of business" },
 ];
 
 export default function GiltTable({ rows, showHeld = false }: { rows: GiltTableRow[]; showHeld?: boolean }) {

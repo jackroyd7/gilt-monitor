@@ -1,6 +1,7 @@
 import "server-only";
 import { readFile } from "node:fs/promises";
 import path from "node:path";
+import { getLive, withLive, type LiveSnapshot } from "./live";
 import type { CurveId, CurveSet, DataStatus, GiltSnapshot } from "./types";
 
 const CURVE_IDS: CurveId[] = ["uk_nominal", "uk_real", "uk_inflation", "uk_ois", "de_bund", "us_ust"];
@@ -37,4 +38,10 @@ export async function loadMarket(): Promise<Market> {
     gilts: await readJson<GiltSnapshot>(path.join(dir, "gilts.json")),
     status: await readJson<DataStatus>(path.join(dir, "status.json")),
   };
+}
+
+/** Market data with intraday giltsyield.com prices overlaid on the DMO close, when configured. */
+export async function loadMarketWithLive(): Promise<Market & { live: LiveSnapshot | null; dmoGilts: GiltSnapshot | undefined }> {
+  const [market, live] = await Promise.all([loadMarket(), getLive()]);
+  return { ...market, gilts: withLive(market.gilts, live), dmoGilts: market.gilts, live };
 }

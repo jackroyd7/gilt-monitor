@@ -12,6 +12,7 @@ import {
   parseDmoText,
   parseUstCsv,
 } from "./parsers";
+import { normaliseYieldUnits, parseBondRow, parsePriceRow, withLive } from "./live-parse";
 import type { CurveSet } from "./types";
 
 const close = (a: number, b: number, tol: number) => assert.ok(Math.abs(a - b) <= tol, `${a} vs ${b}`);
@@ -162,4 +163,48 @@ test("BoE workbook: finds the long-end spot sheet, tenor header and dated rows",
   assert.equal(boeKindFromFilename("OIS daily data current month.xlsx"), "ois");
   assert.equal(boeKindFromFilename("GLC Real daily data current month.xlsx"), "real");
   assert.equal(boeKindFromFilename("readme.txt"), null);
+});
+
+test("giltsyield bond and price rows parse with loose column names", () => {
+  const b = parseBondRow({ ticker: "TG35", isin: "GB00BMV7TC88", coupon: "4.25", maturity: "2035-03-07", type: "Conventional", name: "4¼% Treasury Gilt 2035" });
+  assert.deepEqual(b, { ticker: "TG35", isin: "GB00BMV7TC88", name: "4¼% Treasury Gilt 2035", type: "conventional", coupon: 4.25, maturity: "2035-03-07" });
+  assert.equal(parseBondRow({ ticker: "IL28", isin: "X", name: "0 1/8% Index-linked Treasury Gilt 2028", maturity: "2028-08-10" }).type, "index-linked");
+
+  const p = parsePriceRow({ clean_price: 98.5, dirty_price: "99.10", accrued_interest: 0.6, yield_to_maturity: 4.512, current_yield: 4.3, timestamp: "2026-10-20T14:30:00" });
+  assert.deepEqual(p, { clean: 98.5, dirty: 99.1, ytm: 4.512, time: "2026-10-20T14:30:00" });
+});
+
+test("decimal yields are converted to percent", () => {
+  const g = (y: number, type: "conventional" | "index-linked" = "conventional") =>
+    ({ isin: "x", name: "", type, coupon: 1, maturity: "2030-01-01", cleanPrice: null, dirtyPrice: null, yield: y });
+  const gilts = [g(0.041), g(0.045), g(0.048), g(0.005, "index-linked")];
+  normaliseYieldUnits(gilts);
+  assert.deepEqual(gilts.map((x) => +x.yield!.toFixed(4)), [4.1, 4.5, 4.8, 0.5]);
+  const pct = [g(4.1), g(4.5)];
+  normaliseYieldUnits(pct);
+  assert.equal(pct[0].yield, 4.1);
+});
+
+test("live prices overlay the DMO close by ISIN and add unknown gilts", () => {
+  const base = { name: "", type: "conventional" as const, coupon: 4, dirtyPrice: null };
+  const dmo = {
+    asOf: "2026-10-19",
+    source: "DMO",
+    gilts: [
+      { ...base, isin: "A", maturity: "2030-01-01", cleanPrice: 99, yield: 4.2 },
+      { ...base, isin: "B", maturity: "2035-01-01", cleanPrice: 95, yield: 4.6 },
+    ],
+  };
+  const live = {
+    fetchedAt: "2026-10-20T13:00:00Z",
+    failed: 0,
+    gilts: [
+      { ...base, isin: "A", maturity: "2030-01-01", cleanPrice: 99.2, yield: 4.15, live: true },
+      { ...base, isin: "C", maturity: "2028-01-01", cleanPrice: 100, yield: 4.0, live: true },
+    ],
+  };
+  const m = withLive(dmo, live)!;
+  assert.equal(m.asOf, "2026-10-20");
+  assert.deepEqual(m.gilts.map((x) => [x.isin, x.yield, !!x.live]), [["C", 4.0, true], ["A", 4.15, true], ["B", 4.6, false]]);
+  assert.equal(withLive(dmo, null), dmo);
 });
