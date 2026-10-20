@@ -1,33 +1,33 @@
 {
-  "updatedAt": "2026-10-20T12:30:38.833Z",
+  "updatedAt": "2026-10-20T13:50:45.745Z",
   "sources": {
     "boe": {
       "ok": true,
-      "checkedAt": "2026-10-20T12:30:38.833Z",
+      "checkedAt": "2026-10-20T13:50:45.745Z",
       "latestDate": "2026-10-19",
       "message": "uk_inflation, uk_nominal, uk_real, uk_ois"
     },
     "bundesbank": {
       "ok": true,
-      "checkedAt": "2026-10-20T12:30:38.833Z",
+      "checkedAt": "2026-10-20T13:50:45.745Z",
       "latestDate": "2026-10-20"
     },
     "ust": {
       "ok": true,
-      "checkedAt": "2026-10-20T12:30:38.833Z",
+      "checkedAt": "2026-10-20T13:50:45.745Z",
       "latestDate": "2026-10-19"
     },
     "dmo": {
       "ok": true,
-      "checkedAt": "2026-10-20T12:30:38.833Z",
+      "checkedAt": "2026-10-20T13:50:45.745Z",
       "latestDate": "2026-10-20",
       "message": "103 gilts, 0 with yields; prices unavailable: https://www.dmo.gov.uk/data/XmlDataReport?reportCode=D10B: no usable rows"
     },
     "gilt_history": {
       "ok": true,
-      "checkedAt": "2026-10-20T12:30:38.833Z",
+      "checkedAt": "2026-10-20T13:50:45.745Z",
       "latestDate": "2026-10-19",
-      "message": "backfilled 260/260 days; giltsyield prices are intraday; close not recorded yet"
+      "message": "giltsyield prices are intraday; close not recorded yet"
     }
   }
 }
