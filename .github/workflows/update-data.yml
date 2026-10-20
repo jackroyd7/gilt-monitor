@@ -49,4 +49,13 @@ jobs:
           git config user.name "gilt-monitor-bot"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git commit -m "data: update $(date -u +%Y-%m-%dT%H:%MZ)"
-          git push
+          # Code may have been pushed while this job ran (a backfill can take a while).
+          # This job only touches data/, so rebasing onto the latest main is safe.
+          for attempt in 1 2 3 4; do
+            if git pull --rebase origin main && git push origin HEAD:main; then
+              exit 0
+            fi
+            echo "Push failed (attempt $attempt); retrying"
+            sleep $((attempt * 5))
+          done
+          exit 1
