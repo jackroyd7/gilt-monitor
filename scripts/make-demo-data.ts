@@ -5,7 +5,8 @@
 
 import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
-import { giltYieldFromClean } from "../lib/bond";
+import { giltModDuration, giltYieldFromClean } from "../lib/bond";
+import { emptyHistory, historyJson, recordCloses } from "../lib/history";
 import { addDays } from "../lib/curve";
 import type { CurveId, CurveSet, DataStatus, Gilt, RateBasis } from "../lib/types";
 
@@ -84,23 +85,51 @@ for (let y = 2027; y <= 2073; y += y < 2040 ? 1 : 3) {
     });
   }
 }
+const last = dates.length - 1;
+const realAt = (i: number, t: number) => uk(i, t) - realGap[i] + 0.002 * t;
 for (const y of [2029, 2033, 2037, 2041, 2046, 2051, 2058, 2065, 2073]) {
+  const t = y - Number(end.slice(0, 4));
   gilts.push({
     isin: `GB00DEMOIL${y - 2000}`,
     name: `0 1/8% Index-linked Treasury Gilt ${y}`,
     type: "index-linked",
     coupon: 0.125,
     maturity: `${y}-03-22`,
-    cleanPrice: null,
+    cleanPrice: +(100 + 20 * Math.exp(-t / 20) + 5 * gauss()).toFixed(3),
     dirtyPrice: null,
-    yield: +(levels.uk[dates.length - 1] - realGap[dates.length - 1] + 0.4 + 0.02 * (y - 2026) + 0.05 * gauss()).toFixed(3),
+    yield: +(realAt(last, t) + 0.05 * gauss()).toFixed(3),
+    indexLag: 3,
   });
+}
+// An 8-month-lag linker, which the site must leave out.
+gilts.push({ isin: "GB0031790826", name: "2% Index-linked Treasury Stock 2035", type: "index-linked", coupon: 2, maturity: "2035-01-26", cleanPrice: 250, dirtyPrice: null, yield: 1.1, indexLag: 8 });
+
+// Daily closes for the last year: each gilt keeps a fixed offset to the curve plus noise.
+const history = emptyHistory();
+const offsets = gilts.map(() => 0.04 * gauss());
+for (let i = Math.max(0, dates.length - 260); i <= last; i++) {
+  recordCloses(
+    history,
+    dates[i],
+    gilts.map((g, k) => {
+      const t = (Date.parse(g.maturity) - Date.parse(dates[i])) / (365.25 * 86400000);
+      const y = (g.type === "index-linked" ? realAt(i, t) : uk(i, t)) + offsets[k] + 0.01 * gauss();
+      const yNow = g.yield ?? y;
+      const dur = giltModDuration(g.coupon ?? 1, g.maturity, end, yNow) ?? t;
+      const clean = g.cleanPrice == null ? null : g.cleanPrice * (1 - (dur * (y - yNow)) / 100);
+      return { ...g, yield: +y.toFixed(4), cleanPrice: clean };
+    }),
+  );
 }
 
 async function main() {
   await mkdir(path.join(DIR, "curves"), { recursive: true });
   for (const s of sets) await writeFile(path.join(DIR, "curves", `${s.id}.json`), JSON.stringify(s));
-  await writeFile(path.join(DIR, "gilts.json"), JSON.stringify({ asOf: end, source: "DEMO", gilts }));
+  // Today's snapshot equals the last history row, as it would from the real job.
+  const lastRow = history.rows[dates[last]];
+  for (const g of gilts) if (lastRow[g.isin]) [g.cleanPrice, g.yield] = lastRow[g.isin];
+  await writeFile(path.join(DIR, "gilts.json"), JSON.stringify({ asOf: end, priceDate: dates[last], source: "DEMO", gilts: gilts.filter((g) => g.indexLag !== 8) }));
+  await writeFile(path.join(DIR, "gilt-history.json"), historyJson(history));
   const now = new Date().toISOString();
   const status: DataStatus = {
     updatedAt: now,

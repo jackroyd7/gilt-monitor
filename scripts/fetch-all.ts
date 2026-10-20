@@ -2,12 +2,15 @@
 // One failing source never stops the others; its old data is kept.
 //
 //   npm run fetch-data                 # daily update
-//   npm run fetch-data -- --backfill   # also pull ~3 years of history (slow, large downloads)
+//   npm run fetch-data -- --backfill   # also pull ~3 years of curve history (slow, large downloads)
+//   npm run fetch-data -- --gilt-days=60   # backfill per-gilt closes from giltsyield.com (needs the API key)
 
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { addDays, latestDate, mergeCurveSets } from "../lib/curve";
-import type { CurveSet, DataStatus } from "../lib/types";
+import { closeDate, emptyHistory, historyJson, previousBusinessDays, pruneHistory, recordCloses } from "../lib/history";
+import { fetchAllPrices } from "../lib/live-core";
+import type { CurveSet, DataStatus, GiltHistory, GiltSnapshot } from "../lib/types";
 import { fetchBoe } from "./sources/boe";
 import { fetchBundesbank } from "./sources/bundesbank";
 import { fetchDmo } from "./sources/dmo";
@@ -18,6 +21,8 @@ const KEEP_YEARS = Number(process.env.KEEP_YEARS ?? 5);
 const today = new Date().toISOString().slice(0, 10);
 const keepFrom = addDays(today, -Math.round(KEEP_YEARS * 365.25));
 const backfillSince = process.argv.includes("--backfill") ? addDays(today, -3 * 365) : undefined;
+const giltDaysArg = process.argv.find((a) => a.startsWith("--gilt-days="));
+const backfillGiltDays = giltDaysArg ? Number(giltDaysArg.split("=")[1]) : backfillSince ? 25 : 0;
 
 async function readJson<T>(file: string): Promise<T | undefined> {
   try {
@@ -74,11 +79,49 @@ async function main() {
   });
   await run("bundesbank", async () => ({ latestDate: latestDate(await saveCurve(await fetchBundesbank({ backfillSince }))) }));
   await run("ust", async () => ({ latestDate: latestDate(await saveCurve(await fetchUst({ backfillSince }))) }));
+  let dmoSnapshot: GiltSnapshot | undefined;
   await run("dmo", async () => {
     const { snapshot, warning } = await fetchDmo();
+    dmoSnapshot = snapshot;
     await writeFile(path.join(DATA, "gilts.json"), JSON.stringify(snapshot, null, 1) + "\n");
     const priced = snapshot.gilts.filter((g) => g.yield != null).length;
     return { latestDate: snapshot.asOf, message: `${snapshot.gilts.length} gilts, ${priced} with yields${warning ? `; ${warning}` : ""}` };
+  });
+
+  await run("gilt_history", async () => {
+    const file = path.join(DATA, "gilt-history.json");
+    const hist = (await readJson<GiltHistory>(file)) ?? emptyHistory();
+    const notes: string[] = [];
+    if (process.env.GILTSYIELD_API_KEY) {
+      // Backfill oldest first; skip days we already have in full.
+      const days = previousBusinessDays(today, backfillGiltDays).reverse();
+      let filled = 0;
+      for (const d of days) {
+        if (Object.keys(hist.rows[d] ?? {}).length > 20) continue;
+        try {
+          const snap = await fetchAllPrices({ date: d });
+          filled += recordCloses(hist, d, snap.gilts) ? 1 : 0;
+        } catch (e) {
+          console.warn(`  no giltsyield closes for ${d}: ${(e as Error).message}`);
+        }
+      }
+      if (days.length) notes.push(`backfilled ${filled}/${days.length} days`);
+      const snap = await fetchAllPrices();
+      const d = closeDate(snap.priceTime);
+      if (d) notes.push(`giltsyield ${d}: ${recordCloses(hist, d, snap.gilts)} gilts`);
+      else notes.push("giltsyield prices are intraday; close not recorded yet");
+    }
+    if (dmoSnapshot) {
+      // DMO closes fill any gilt giltsyield didn't price (or everything, without a key).
+      const d = dmoSnapshot.priceDate ?? closeDate(undefined)!;
+      const have = hist.rows[d] ?? {};
+      const missing = dmoSnapshot.gilts.filter((g) => !have[g.isin]);
+      if (missing.length) notes.push(`DMO ${d}: ${recordCloses(hist, d, missing)} gilts`);
+    }
+    pruneHistory(hist, keepFrom);
+    await writeFile(file, historyJson(hist));
+    const dates = Object.keys(hist.rows).sort();
+    return { latestDate: dates[dates.length - 1], message: notes.join("; ") };
   });
 
   status.updatedAt = checkedAt;

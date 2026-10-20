@@ -2,9 +2,8 @@
 // Field names aren't documented, so columns are matched loosely by name.
 
 import { parseCoupon } from "./bond";
-import { parseDate } from "./parsers";
-import type { Gilt, GiltSnapshot, GiltType } from "./types";
-import type { LiveSnapshot } from "./live";
+import { indexLag, parseDate } from "./parsers";
+import type { Gilt, GiltSnapshot, GiltType, LiveSnapshot } from "./types";
 
 export type Row = Record<string, unknown>;
 
@@ -39,13 +38,16 @@ export function parseBondRow(r: Row) {
   const coupon = num(field(r, /^coupon$/i, /coupon/i)) ?? (name ? parseCoupon(name) : null);
   const t = `${typeRaw} ${name}`.toLowerCase();
   const type: GiltType = /index|linker|\bil\b|true/.test(t) ? "index-linked" : "conventional";
+  const isinStr = isin == null ? "" : String(isin).trim();
+  const lagText = `${String(field(r, /lag/i) ?? "")} ${typeRaw}`;
   return {
     ticker: ticker == null ? "" : String(ticker),
-    isin: isin == null ? "" : String(isin).trim(),
+    isin: isinStr,
     name: name || String(ticker ?? isin ?? ""),
     type,
     coupon,
     maturity: mat ?? "",
+    indexLag: type === "index-linked" ? indexLag(lagText, isinStr, coupon, mat ?? undefined) : undefined,
   };
 }
 

@@ -1,5 +1,5 @@
 import { giltYieldFromClean } from "../../lib/bond";
-import { parseDmoText } from "../../lib/parsers";
+import { excludedGilt, parseDmoText } from "../../lib/parsers";
 import type { Gilt, GiltSnapshot } from "../../lib/types";
 import { getText } from "./http";
 
@@ -46,7 +46,10 @@ export async function fetchDmo(): Promise<{ snapshot: GiltSnapshot; warning?: st
       dirtyPrice: p.dirtyPrice ?? null,
       yield: p.yield ?? null,
       amountInIssue: s.amountInIssue ?? null,
+      indexLag: s.indexLag ?? p.indexLag,
+      priceDate: p.priceDate,
     };
+    if (excludedGilt(g)) continue;
     if (!g.maturity || g.maturity <= asOf || g.type === "strip") continue;
     if (g.yield == null && g.cleanPrice != null && g.coupon != null && g.type === "conventional") {
       const calc = giltYieldFromClean(g.cleanPrice, g.coupon, g.maturity, asOf);
@@ -59,5 +62,6 @@ export async function fetchDmo(): Promise<{ snapshot: GiltSnapshot; warning?: st
     gilts.push(g);
   }
   gilts.sort((a, b) => a.maturity.localeCompare(b.maturity));
-  return { snapshot: { asOf, source: "UK Debt Management Office", gilts }, warning };
+  const priceDate = gilts.map((g) => g.priceDate).filter(Boolean).sort().pop();
+  return { snapshot: { asOf, priceDate, source: "UK Debt Management Office", gilts }, warning };
 }

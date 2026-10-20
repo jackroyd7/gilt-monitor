@@ -2,7 +2,7 @@ import "server-only";
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 import { getLive, withLive, type LiveSnapshot } from "./live";
-import type { CurveId, CurveSet, DataStatus, GiltSnapshot } from "./types";
+import type { CurveId, CurveSet, DataStatus, GiltHistory, GiltSnapshot } from "./types";
 
 const CURVE_IDS: CurveId[] = ["uk_nominal", "uk_real", "uk_inflation", "uk_ois", "de_bund", "us_ust"];
 
@@ -22,10 +22,17 @@ async function readJson<T>(file: string): Promise<T | undefined> {
   }
 }
 
+const dataDir = () => path.join(/*turbopackIgnore: true*/ process.cwd(), process.env.DATA_DIR ?? "data");
+
+/** Daily closes per gilt, recorded by the data job. */
+export async function loadGiltHistory(): Promise<GiltHistory | undefined> {
+  return readJson<GiltHistory>(path.join(dataDir(), "gilt-history.json"));
+}
+
 /** Reads everything the daily job wrote. DATA_DIR lets you point at demo data locally. */
 export async function loadMarket(): Promise<Market> {
   // Data files are shipped via outputFileTracingIncludes in next.config.ts.
-  const dir = path.join(/*turbopackIgnore: true*/ process.cwd(), process.env.DATA_DIR ?? "data");
+  const dir = dataDir();
   const curves: Curves = {};
   await Promise.all(
     CURVE_IDS.map(async (id) => {

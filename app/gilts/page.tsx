@@ -1,49 +1,70 @@
-import { GiltScatter } from "@/components/charts";
-import GiltTable from "@/components/GiltTable";
-import { Card, PageHeader } from "@/components/Tiles";
-import { giltRows } from "@/lib/analytics";
 import { connection } from "next/server";
+import GiltMonitor, { type MonitorRow } from "@/components/GiltMonitor";
 import LiveBar from "@/components/LiveBar";
-import { loadMarketWithLive } from "@/lib/data";
+import { PageHeader } from "@/components/Tiles";
+import { giltRows } from "@/lib/analytics";
+import { loadGiltHistory, loadMarketWithLive } from "@/lib/data";
+import { nsValue, type NelsonSiegel } from "@/lib/fit";
+import { giltSeries, londonNow, yieldChanges } from "@/lib/history";
 import { liveInfo } from "@/lib/live";
-import { nsValue } from "@/lib/fit";
+
+function fitLine(fit: NelsonSiegel | null, from: number, to: number) {
+  if (!fit || to <= from) return [];
+  return Array.from({ length: 80 }, (_, i) => from + (i * (to - from)) / 79).map((t) => ({ t, y: nsValue(fit, t) }));
+}
 
 export default async function GiltsPage() {
   await connection(); // render per request so intraday prices are current
-  const { curves, gilts, live } = await loadMarketWithLive();
-  const { rows, fit, asOf } = giltRows(gilts, curves);
-  const conv = rows.filter((r) => r.type === "conventional" && r.yield != null);
-  const maxT = Math.max(1, ...conv.map((r) => r.years));
-  const fitted = fit
-    ? Array.from({ length: 80 }, (_, i) => 0.5 + (i * (maxT - 0.5)) / 79).map((t) => ({ t, y: nsValue(fit, t) }))
-    : [];
+  const [{ curves, gilts, live }, hist] = await Promise.all([loadMarketWithLive(), loadGiltHistory()]);
+  const { rows, fit, realFit, asOf } = giltRows(gilts, curves);
+  const liveDate = live?.gilts.length ? londonNow(new Date(live.fetchedAt)).date : undefined;
+
+  const monitor: MonitorRow[] = rows
+    .filter((r): r is typeof r & { type: MonitorRow["type"] } => r.type === "conventional" || r.type === "index-linked")
+    .map((r) => {
+      const series = giltSeries(hist, r.isin);
+      // The date the current yield belongs to: today if intraday, else its close date.
+      const date = (r.live && liveDate) || r.priceDate || gilts?.priceDate || series[series.length - 1]?.[0] || asOf || "";
+      const ch = yieldChanges(series, { date, yield: r.yield });
+      return {
+        isin: r.isin,
+        name: r.name,
+        type: r.type,
+        maturity: r.maturity,
+        years: r.years,
+        cleanPrice: r.cleanPrice,
+        yield: r.yield,
+        yieldComputed: r.yieldComputed,
+        oisSpread: r.oisSpread,
+        richCheap: r.richCheap,
+        bei: r.bei,
+        modDuration: r.modDuration,
+        live: r.live,
+        ...ch,
+      };
+    });
+
+  // Draw each fit only across the maturities it was fitted to.
+  const span = (type: string, minYears: number) => {
+    const ts = rows.filter((r) => r.type === type && r.yield != null && r.years > minYears).map((r) => r.years);
+    return ts.length ? [Math.min(...ts), Math.max(...ts)] : [0, 0];
+  };
 
   return (
     <>
-      <PageHeader title={`Gilts in issue${asOf ? ` · ${asOf}` : ""}`}>
-        Prices are intraday from giltsyield.com where available, otherwise the DMO close. Each conventional gilt is compared with a Nelson-Siegel curve fitted to all
-        conventionals over six months (index-linked gilts are in the table only). Positive “vs fit” means the gilt yields more than the curve (cheap).
+      <PageHeader title={`Gilts${asOf ? ` · ${asOf}` : ""}`}>
+        Every conventional and 3-month-lag index-linked gilt. Prices are intraday from giltsyield.com where available,
+        otherwise the DMO close. Tick up to two gilts (or click points on the chart) to plot their yield or price
+        history, or the yield spread between them.
       </PageHeader>
       <LiveBar live={liveInfo(live)} />
-      <div className="grid gap-4">
-        <Card
-          title="Yield vs maturity"
-          subtitle={fit ? `Fit RMSE ${(fit.rmse * 100).toFixed(1)}bp across ${conv.length} conventionals` : "Not enough priced gilts to fit a curve yet"}
-        >
-          <GiltScatter
-            points={conv.map((r) => ({
-              t: r.years,
-              y: r.yield as number,
-              name: r.name,
-              extra: r.richCheap != null ? `${r.richCheap > 0 ? "+" : ""}${r.richCheap.toFixed(1)}bp vs fit` : undefined,
-            }))}
-            fitted={fitted}
-          />
-        </Card>
-        <Card title="All gilts" subtitle="Click a column to sort">
-          <GiltTable rows={rows} />
-        </Card>
-      </div>
+      <GiltMonitor
+        rows={monitor}
+        fits={{
+          conventional: fitLine(fit, ...(span("conventional", 0.5) as [number, number])),
+          "index-linked": fitLine(realFit, ...(span("index-linked", 1.5) as [number, number])),
+        }}
+      />
     </>
   );
 }

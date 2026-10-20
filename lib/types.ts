@@ -41,11 +41,19 @@ export interface Gilt {
   yieldComputed?: boolean;
   /** Price is intraday from giltsyield.com rather than the DMO close. */
   live?: boolean;
+  /** Indexation lag in months for index-linked gilts (3 for all issued since 2005). */
+  indexLag?: 3 | 8;
+  /** giltsyield.com ticker, used for price history calls. */
+  ticker?: string;
   amountInIssue?: number | null; // £m nominal
+  /** Close-of-business date the price refers to, when the source states it. */
+  priceDate?: string;
 }
 
 export interface GiltSnapshot {
   asOf: string;
+  /** Close-of-business date of the prices, when the source states it. */
+  priceDate?: string;
   source: string;
   gilts: Gilt[];
 }
@@ -61,4 +69,19 @@ export interface DataStatus {
   updatedAt: string;
   demo?: boolean;
   sources: Record<string, SourceStatus>;
+}
+
+/** Intraday prices for every gilt from giltsyield.com. */
+export interface LiveSnapshot {
+  fetchedAt: string; // ISO, when we called the API
+  priceTime?: string; // latest timestamp reported by giltsyield, if any
+  gilts: Gilt[];
+  failed: number;
+  error?: string;
+}
+
+/** Daily close per gilt: rows[date][isin] = [clean price, yield %]. Linker yields are real. */
+export interface GiltHistory {
+  gilts: Record<string, { name: string; maturity: string; type: GiltType; ticker?: string }>;
+  rows: Record<string, Record<string, [number | null, number | null]>>;
 }

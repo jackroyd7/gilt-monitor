@@ -33,7 +33,7 @@ const COLS: Col[] = [
   { key: "yield", label: "Yield %", fmt: (r) => f(r.yield, 3) + (r.yieldComputed ? "*" : "") },
   { key: "modDuration", label: "ModDur", fmt: (r) => f(r.modDuration, 2) },
   { key: "richCheap", label: "vs fit bp", fmt: (r) => f(r.richCheap, 1), title: "Yield minus Nelson-Siegel fit. Positive = cheap" },
-  { key: "oisSpread", label: "vs OIS bp", fmt: (r) => f(r.oisSpread, 1), title: "Yield minus SONIA OIS at the same maturity (asset-swap proxy)" },
+  { key: "oisSpread", label: "ASW bp", fmt: (r) => f(r.oisSpread, 1), title: "Asset-swap proxy: yield minus SONIA OIS at the same maturity (linkers: real yield plus BoE implied RPI)" },
   { key: "bundSpread", label: "vs Bund bp", fmt: (r) => f(r.bundSpread, 1) },
   { key: "ustSpread", label: "vs UST bp", fmt: (r) => f(r.ustSpread, 1) },
   { key: "live", label: "Price", fmt: (r) => (r.cleanPrice == null && r.yield == null ? "" : r.live ? "intraday" : "close"), title: "intraday = giltsyield.com, close = DMO close of business" },

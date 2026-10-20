@@ -217,6 +217,23 @@ function pick(r: Record<string, string>, ...patterns: RegExp[]): string | undefi
   return undefined;
 }
 
+// The only 8-month-lag linkers still in issue: 4⅛% IL 2030 and 2% IL 2035.
+const EIGHT_MONTH_LAG_ISINS = new Set(["GB0008983024", "GB0031790826"]);
+
+/** Indexation lag of an index-linked gilt from its type text, ISIN, or coupon and maturity. */
+export function indexLag(text: string, isin?: string, coupon?: number | null, maturity?: string): 3 | 8 {
+  const t = text.toLowerCase();
+  if (/\b8\s*-?\s*m(onth)?s?\b/.test(t)) return 8;
+  if (/\b3\s*-?\s*m(onth)?s?\b/.test(t)) return 3;
+  if (isin && EIGHT_MONTH_LAG_ISINS.has(isin)) return 8;
+  const y = maturity?.slice(0, 4);
+  if ((y === "2030" && coupon === 4.125) || (y === "2035" && coupon === 2)) return 8;
+  return 3;
+}
+
+/** We only show 3-month-lag linkers; the two old 8-month ones price on a different basis. */
+export const excludedGilt = (g: { type: GiltType; indexLag?: 3 | 8 }) => g.type === "index-linked" && g.indexLag === 8;
+
 function giltType(typeField: string | undefined, name: string): GiltType {
   const s = `${typeField ?? ""} ${name}`.toLowerCase();
   if (s.includes("strip")) return "strip";
@@ -246,6 +263,9 @@ export function recordsToGilts(records: Record<string, string>[]): Map<string, P
     if (dirty != null) g.dirtyPrice = dirty;
     const y = num(pick(r, /^yield$/, /grossredemptionyield/, /^gry/, /redemptionyield/, /yield/));
     if (y != null) g.yield = y;
+    if (g.type === "index-linked") g.indexLag = indexLag(`${typeField ?? ""} ${name}`, g.isin, g.coupon, g.maturity);
+    const pd = parseDate(pick(r, /closeofbusiness/, /cobdate/, /businessdate/, /pricedate/, /tradedate/, /^date$/));
+    if (pd && (g.cleanPrice != null || g.yield != null)) g.priceDate = pd;
     const amt = num(pick(r, /amountinissue/, /nominalamount/, /outstanding/));
     if (amt != null) g.amountInIssue = amt;
     out.set(g.isin!, { ...out.get(g.isin!), ...g });

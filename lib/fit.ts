@@ -40,7 +40,8 @@ function solve3(A: number[][], b: number[]): number[] | null {
 export function fitNelsonSiegel(points: { t: number; y: number }[]): NelsonSiegel | null {
   if (points.length < 4) return null;
   let best: NelsonSiegel | null = null;
-  for (let tau = 0.25; tau <= 20; tau *= 1.05) {
+  // τ below ~0.5y lets the curve bend sharply between bonds, which is noise, not signal.
+  for (let tau = 0.5; tau <= 20; tau *= 1.05) {
     const AtA = [[0, 0, 0], [0, 0, 0], [0, 0, 0]];
     const Aty = [0, 0, 0];
     for (const p of points) {

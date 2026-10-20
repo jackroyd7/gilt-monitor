@@ -11,8 +11,12 @@ import {
   parseDate,
   parseDmoText,
   parseUstCsv,
+  indexLag,
+  excludedGilt,
 } from "./parsers";
+import { closeDate, giltSeries, recordCloses, yieldChanges, emptyHistory, previousBusinessDays } from "./history";
 import { normaliseYieldUnits, parseBondRow, parsePriceRow, withLive } from "./live-parse";
+import { giltRows } from "./analytics";
 import type { CurveSet } from "./types";
 
 const close = (a: number, b: number, tol: number) => assert.ok(Math.abs(a - b) <= tol, `${a} vs ${b}`);
@@ -167,7 +171,7 @@ test("BoE workbook: finds the long-end spot sheet, tenor header and dated rows",
 
 test("giltsyield bond and price rows parse with loose column names", () => {
   const b = parseBondRow({ ticker: "TG35", isin: "GB00BMV7TC88", coupon: "4.25", maturity: "2035-03-07", type: "Conventional", name: "4¼% Treasury Gilt 2035" });
-  assert.deepEqual(b, { ticker: "TG35", isin: "GB00BMV7TC88", name: "4¼% Treasury Gilt 2035", type: "conventional", coupon: 4.25, maturity: "2035-03-07" });
+  assert.deepEqual(b, { ticker: "TG35", isin: "GB00BMV7TC88", name: "4¼% Treasury Gilt 2035", type: "conventional", coupon: 4.25, maturity: "2035-03-07", indexLag: undefined });
   assert.equal(parseBondRow({ ticker: "IL28", isin: "X", name: "0 1/8% Index-linked Treasury Gilt 2028", maturity: "2028-08-10" }).type, "index-linked");
 
   const p = parsePriceRow({ clean_price: 98.5, dirty_price: "99.10", accrued_interest: 0.6, yield_to_maturity: 4.512, current_yield: 4.3, timestamp: "2026-10-20T14:30:00" });
@@ -207,4 +211,56 @@ test("live prices overlay the DMO close by ISIN and add unknown gilts", () => {
   assert.equal(m.asOf, "2026-10-20");
   assert.deepEqual(m.gilts.map((x) => [x.isin, x.yield, !!x.live]), [["C", 4.0, true], ["A", 4.15, true], ["B", 4.6, false]]);
   assert.equal(withLive(dmo, null), dmo);
+});
+
+test("index lag: 3-month by default, 8-month from text, ISIN or coupon/maturity", () => {
+  assert.equal(indexLag("Index-linked 3 months"), 3);
+  assert.equal(indexLag("Index-linked 8 months"), 8);
+  assert.equal(indexLag("", "GB0008983024"), 8);
+  assert.equal(indexLag("", "X", 2, "2035-01-26"), 8);
+  assert.equal(indexLag("", "X", 0.125, "2035-01-26"), 3);
+  assert.ok(excludedGilt({ type: "index-linked", indexLag: 8 }));
+  assert.ok(!excludedGilt({ type: "index-linked", indexLag: 3 }));
+  assert.ok(!excludedGilt({ type: "conventional" }));
+  const m = parseDmoText(`<R><G INSTRUMENT_TYPE="Index-linked 8 months" INSTRUMENT_NAME="2% Index-linked Treasury Stock 2035" ISIN_CODE="GB0031790826" REDEMPTION_DATE="2035-01-26" /></R>`);
+  assert.equal(m.get("GB0031790826")!.indexLag, 8);
+});
+
+test("gilt history records closes and computes 1d/1w/1m yield changes", () => {
+  const g = (y: number) => ({ isin: "A", name: "A", type: "conventional" as const, coupon: 4, maturity: "2035-01-01", cleanPrice: 100, dirtyPrice: null, yield: y });
+  const h = emptyHistory();
+  recordCloses(h, "2026-09-18", [g(4.0)]); // > 1 month before
+  recordCloses(h, "2026-10-12", [g(4.2)]); // 1 week before 10-20 is 10-13 -> uses 10-12
+  recordCloses(h, "2026-10-19", [g(4.3)]);
+  const s = giltSeries(h, "A");
+  assert.equal(s.length, 3);
+  const c = yieldChanges(s, { date: "2026-10-20", yield: 4.35 });
+  assert.ok(Math.abs(c.d1! - 5) < 1e-9 && Math.abs(c.w1! - 15) < 1e-9 && Math.abs(c.m1! - 35) < 1e-9);
+  // When the current yield is itself the latest close, compare with the day before it.
+  const c2 = yieldChanges(s, { date: "2026-10-19", yield: 4.3 });
+  assert.ok(Math.abs(c2.d1! - 10) < 1e-9);
+  assert.deepEqual(yieldChanges([], { date: "2026-10-20", yield: 4 }), { d1: null, w1: null, m1: null });
+});
+
+test("close date: earlier timestamp is that day's close; today's only after 17:00 London", () => {
+  const at = (iso: string) => new Date(iso);
+  assert.equal(closeDate("2026-10-19T16:35:00+01:00", at("2026-10-20T08:00:00Z")), "2026-10-19");
+  assert.equal(closeDate("2026-10-20T14:30:00+01:00", at("2026-10-20T13:40:00Z")), null);
+  assert.equal(closeDate("2026-10-20T16:30:00+01:00", at("2026-10-20T18:15:00Z")), "2026-10-20");
+  assert.equal(closeDate(undefined, at("2026-10-20T06:15:00Z")), "2026-10-19");
+  assert.equal(closeDate(undefined, at("2026-10-19T06:15:00Z")), "2026-10-16"); // Monday morning -> Friday
+  assert.deepEqual(previousBusinessDays("2026-10-19", 2), ["2026-10-16", "2026-10-15"]);
+});
+
+test("linker ASW proxy and breakeven", () => {
+  const flat = (id: CurveSet["id"], v: number): CurveSet => ({ id, label: "", source: "", basis: "par_semiannual", tenors: [1, 50], rows: { "2026-10-20": [v, v] } });
+  const curves = { uk_ois: flat("uk_ois", 4), uk_inflation: flat("uk_inflation", 3) };
+  const conv = [3, 5, 8, 12, 20, 30].map((y, i) => ({ isin: `C${i}`, name: "", type: "conventional" as const, coupon: 4, maturity: `${2026 + y}-10-20`, cleanPrice: null, dirtyPrice: null, yield: 4.5 }));
+  const il = { isin: "L", name: "", type: "index-linked" as const, coupon: 0.125, maturity: "2036-10-20", cleanPrice: null, dirtyPrice: null, yield: 1.2 };
+  const { rows } = giltRows({ asOf: "2026-10-20", source: "", gilts: [...conv, il] }, curves);
+  const l = rows.find((r) => r.isin === "L")!;
+  // (1 + 1.2/200)(1 + 3/200) - 1, x200 = 4.218%; minus 4% OIS = 21.8bp
+  assert.ok(Math.abs(l.oisSpread! - 21.8) < 0.01, String(l.oisSpread));
+  assert.ok(Math.abs(l.bei! - 3.3) < 1e-6, String(l.bei));
+  assert.ok(Math.abs(rows[0].oisSpread! - 50) < 1e-9);
 });

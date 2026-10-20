@@ -149,25 +149,37 @@ export interface GiltRow extends Gilt {
   modDuration: number | null;
   fitted: number | null;
   richCheap: number | null; // bp, yield minus fitted; positive = cheap
-  oisSpread: number | null; // bp vs SONIA OIS at matched maturity (asset-swap proxy)
+  /**
+   * Asset-swap proxy in bp: yield minus SONIA OIS at the same maturity. For linkers the
+   * real yield is first turned into a nominal-equivalent with BoE implied RPI inflation.
+   */
+  oisSpread: number | null;
+  /** Linkers only: conventional curve (fitted) minus the linker's real yield, in %. */
+  bei: number | null;
   bundSpread: number | null; // bp vs Bund at matched maturity
   ustSpread: number | null; // bp vs UST at matched maturity
 }
 
 export function giltRows(snap: GiltSnapshot | undefined, c: Curves) {
-  if (!snap) return { rows: [] as GiltRow[], fit: null, asOf: undefined };
+  if (!snap) return { rows: [] as GiltRow[], fit: null, realFit: null, asOf: undefined };
   const asOf = snap.asOf;
-  const conv = snap.gilts.filter((g) => g.type === "conventional" && g.yield != null);
-  const fitPts = conv
-    .map((g) => ({ t: yearsBetween(asOf, g.maturity), y: g.yield as number }))
-    .filter((p) => p.t > 0.5);
-  const fit = fitNelsonSiegel(fitPts);
+  const fitOf = (type: Gilt["type"], minYears: number) =>
+    fitNelsonSiegel(
+      snap.gilts
+        .filter((g) => g.type === type && g.yield != null)
+        .map((g) => ({ t: yearsBetween(asOf, g.maturity), y: g.yield as number }))
+        .filter((p) => p.t > minYears),
+    );
+  const fit = fitOf("conventional", 0.5);
+  // Short linkers are dominated by known inflation accrual, so leave them out of the real fit.
+  const realFit = fitOf("index-linked", 1.5);
 
   const near = (set: CurveSet | undefined) => {
     const d = set ? dateOnOrBefore(set, asOf) : undefined;
     return d && d >= addDays(asOf, -5) ? d : undefined;
   };
   const dOis = near(c.uk_ois);
+  const dInfl = near(c.uk_inflation);
   const dBund = near(c.de_bund);
   const dUst = near(c.us_ust);
   const spread = (y: number | null, set: CurveSet | undefined, d: string | undefined, t: number) => {
@@ -178,20 +190,31 @@ export function giltRows(snap: GiltSnapshot | undefined, c: Curves) {
   const rows: GiltRow[] = snap.gilts.map((g) => {
     const years = yearsBetween(asOf, g.maturity);
     const isConv = g.type === "conventional";
-    const fitted = isConv && fit && years > 0.5 ? nsValue(fit, years) : null;
+    const isLinker = g.type === "index-linked";
+    const fitted = isConv && fit && years > 0.5 ? nsValue(fit, years) : isLinker && realFit && years > 1.5 ? nsValue(realFit, years) : null;
+    let oisSpread: number | null = null;
+    let bei: number | null = null;
+    if (isConv) oisSpread = spread(g.yield, c.uk_ois, dOis, years);
+    if (isLinker && g.yield != null) {
+      const infl = rateSA(c.uk_inflation, dInfl, years);
+      const nominalEq = infl == null ? null : 200 * ((1 + g.yield / 200) * (1 + infl / 200) - 1);
+      oisSpread = spread(nominalEq, c.uk_ois, dOis, years);
+      bei = fit && years > 0.5 ? nsValue(fit, years) - g.yield : null;
+    }
     return {
       ...g,
       years,
       modDuration:
-        isConv && g.coupon != null && g.yield != null ? giltModDuration(g.coupon, g.maturity, asOf, g.yield) : null,
+        g.coupon != null && g.yield != null && (isConv || isLinker) ? giltModDuration(g.coupon, g.maturity, asOf, g.yield) : null,
       fitted,
       richCheap: fitted != null && g.yield != null ? (g.yield - fitted) * 100 : null,
-      oisSpread: isConv ? spread(g.yield, c.uk_ois, dOis, years) : null,
+      oisSpread,
+      bei,
       bundSpread: isConv ? spread(g.yield, c.de_bund, dBund, years) : null,
       ustSpread: isConv ? spread(g.yield, c.us_ust, dUst, years) : null,
     };
   });
-  return { rows, fit, asOf };
+  return { rows, fit, realFit, asOf };
 }
 
 /**

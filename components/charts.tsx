@@ -25,10 +25,11 @@ export interface Series {
   dashed?: boolean;
 }
 
-type Unit = "pct" | "bp";
+type Unit = "pct" | "bp" | "price";
 type XKind = "tenor" | "date";
 
-const fmtVal = (v: number, unit: Unit) => (unit === "pct" ? `${v.toFixed(2)}%` : `${v.toFixed(0)}bp`);
+const fmtVal = (v: number, unit: Unit) =>
+  unit === "pct" ? `${v.toFixed(3)}%` : unit === "bp" ? `${v.toFixed(1)}bp` : v.toFixed(3);
 const fmtTenor = (t: number) => (t < 1 ? `${Math.round(t * 12)}m` : `${+t.toFixed(1)}y`);
 const fmtDate = (ms: number) =>
   new Date(ms).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "2-digit", timeZone: "UTC" });
@@ -167,7 +168,7 @@ export function SeriesChart({
               <YAxis
                 width={48}
                 domain={["auto", "auto"]}
-                tickFormatter={(v: number) => (unit === "pct" ? v.toFixed(1) : v.toFixed(0))}
+                tickFormatter={(v: number) => (unit === "bp" ? v.toFixed(0) : unit === "pct" ? v.toFixed(2) : v.toFixed(1))}
               />
               {zeroLine && <ReferenceLine y={0} stroke="var(--axis)" />}
               <Tooltip
@@ -229,29 +230,34 @@ export function ToggleSeriesChart({
 }
 
 export interface ScatterPoint {
+  id?: string;
   t: number;
   y: number;
   name: string;
   extra?: string;
 }
 
-/** Gilt yields vs maturity, with the fitted curve as a line. */
+/** Gilt yields vs maturity, with the fitted curve as a line. Click a point to select it. */
 export function GiltScatter({
   points,
   fitted,
-  linkers,
+  label = "Conventional gilts",
+  selected = [],
+  onSelect,
   height = 340,
 }: {
   points: ScatterPoint[];
   fitted: { t: number; y: number }[];
-  linkers?: ScatterPoint[];
+  label?: string;
+  selected?: string[];
+  onSelect?: (id: string) => void;
   height?: number;
 }) {
   const legend = [
-    { key: "c", name: "Conventional gilts", color: "var(--series-1)" },
+    { key: "c", name: label, color: "var(--series-1)" },
     { key: "f", name: "Nelson-Siegel fit", color: "var(--series-2)" },
-    ...(linkers?.length ? [{ key: "l", name: "Index-linked (real)", color: "var(--series-3)" }] : []),
   ];
+  const picked = points.filter((p) => p.id && selected.includes(p.id));
   return (
     <div className="space-y-2">
       <Legend series={legend} />
@@ -260,7 +266,7 @@ export function GiltScatter({
           <ComposedChart margin={{ top: 8, right: 12, bottom: 0, left: 0 }}>
             <CartesianGrid vertical={false} />
             <XAxis dataKey="t" type="number" domain={[0, "dataMax"]} tickFormatter={fmtTenor} allowDuplicatedCategory={false} />
-            <YAxis dataKey="y" width={48} domain={["auto", "auto"]} tickFormatter={(v: number) => v.toFixed(1)} />
+            <YAxis dataKey="y" width={48} domain={["auto", "auto"]} tickFormatter={(v: number) => v.toFixed(2)} />
             <Tooltip
               cursor={false}
               content={({ active, payload }) => {
@@ -272,15 +278,27 @@ export function GiltScatter({
                     <div className="num text-ink-2">
                       {fmtTenor(p.t)} · {p.y.toFixed(3)}%{p.extra ? ` · ${p.extra}` : ""}
                     </div>
+                    {onSelect && <div className="mt-1 text-muted">Click to {selected.includes(p.id ?? "") ? "deselect" : "select"}</div>}
                   </div>
                 );
               }}
             />
             <Line data={fitted} dataKey="y" stroke="var(--series-2)" strokeWidth={2} dot={false} isAnimationActive={false} />
-            <Scatter data={points} fill="var(--series-1)" stroke="var(--surface)" strokeWidth={2} r={5} isAnimationActive={false} />
-            {linkers?.length ? (
-              <Scatter data={linkers} fill="var(--series-3)" stroke="var(--surface)" strokeWidth={2} isAnimationActive={false} />
-            ) : null}
+            <Scatter
+              data={points}
+              fill="var(--series-1)"
+              stroke="var(--surface)"
+              strokeWidth={2}
+              isAnimationActive={false}
+              cursor={onSelect ? "pointer" : undefined}
+              onClick={(d) => {
+                const id = (d as unknown as { payload?: ScatterPoint })?.payload?.id ?? (d as unknown as ScatterPoint)?.id;
+                if (id && onSelect) onSelect(id);
+              }}
+            />
+            {picked.length > 0 && (
+              <Scatter data={picked} fill="var(--surface)" stroke="var(--ink)" strokeWidth={2.5} isAnimationActive={false} />
+            )}
           </ComposedChart>
         </ResponsiveContainer>
       </div>

@@ -8,9 +8,13 @@ on:
   workflow_dispatch:
     inputs:
       backfill:
-        description: "Also download ~3 years of history (slow)"
+        description: "Also download ~3 years of curve history (slow)"
         type: boolean
         default: false
+      gilt_days:
+        description: "Backfill this many business days of per-gilt closes from giltsyield.com (~75 API calls per day)"
+        type: number
+        default: 0
 
 permissions:
   contents: write
@@ -31,7 +35,10 @@ jobs:
           cache: npm
       - run: npm ci
       - name: Fetch data
-        run: npm run fetch-data -- ${{ inputs.backfill && '--backfill' || '' }}
+        env:
+          # Optional: lets the job record giltsyield.com closes for every gilt.
+          GILTSYIELD_API_KEY: ${{ secrets.GILTSYIELD_API_KEY }}
+        run: npm run fetch-data -- ${{ inputs.backfill && '--backfill' || '' }} ${{ inputs.gilt_days > 0 && format('--gilt-days={0}', inputs.gilt_days) || '' }}
       - name: Commit if changed
         run: |
           git add data
