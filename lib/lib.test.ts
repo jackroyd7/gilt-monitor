@@ -216,7 +216,7 @@ test("live prices overlay the DMO close by ISIN and add unknown gilts", () => {
 test("index lag: 3-month by default, 8-month from text, ISIN or coupon/maturity", () => {
   assert.equal(indexLag("Index-linked 3 months"), 3);
   assert.equal(indexLag("Index-linked 8 months"), 8);
-  assert.equal(indexLag("", "GB0008983024"), 8);
+  assert.equal(indexLag("", "GB0008932666"), 8);
   assert.equal(indexLag("", "X", 2, "2035-01-26"), 8);
   assert.equal(indexLag("", "X", 0.125, "2035-01-26"), 3);
   assert.ok(excludedGilt({ type: "index-linked", indexLag: 8 }));

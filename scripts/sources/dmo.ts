@@ -12,8 +12,11 @@ async function firstWorking(urls: string[], want: (m: Map<string, Partial<Gilt>>
   const errors: string[] = [];
   for (const url of urls) {
     try {
-      const m = parseDmoText(await getText(url));
+      const text = await getText(url);
+      const m = parseDmoText(text);
       if (want(m)) return m;
+      // Log the start of the response so a format change can be diagnosed from the Action log.
+      console.warn(`  DMO ${url} returned ${text.length} chars without usable rows. Start:\n${text.slice(0, 1500)}`);
       errors.push(`${url}: no usable rows`);
     } catch (e) {
       errors.push(`${url}: ${(e as Error).message}`);

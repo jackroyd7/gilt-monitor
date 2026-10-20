@@ -218,7 +218,7 @@ function pick(r: Record<string, string>, ...patterns: RegExp[]): string | undefi
 }
 
 // The only 8-month-lag linkers still in issue: 4⅛% IL 2030 and 2% IL 2035.
-const EIGHT_MONTH_LAG_ISINS = new Set(["GB0008983024", "GB0031790826"]);
+const EIGHT_MONTH_LAG_ISINS = new Set(["GB0008932666", "GB0031790826"]);
 
 /** Indexation lag of an index-linked gilt from its type text, ISIN, or coupon and maturity. */
 export function indexLag(text: string, isin?: string, coupon?: number | null, maturity?: string): 3 | 8 {
