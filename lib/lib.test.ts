@@ -3,7 +3,7 @@ import { test } from "node:test";
 import * as XLSX from "xlsx";
 import { couponSchedule, giltModDuration, giltYieldFromClean, parseCoupon } from "./bond";
 import { interpolate, mergeCurveSets, toSemiannual } from "./curve";
-import { fitNelsonSiegel, nsValue } from "./fit";
+import { fitNelsonSiegel, nsValue, robustFit } from "./fit";
 import {
   boeKindFromFilename,
   parseBoeWorkbook,
@@ -263,4 +263,13 @@ test("linker ASW proxy and breakeven", () => {
   assert.ok(Math.abs(l.oisSpread! - 21.8) < 0.01, String(l.oisSpread));
   assert.ok(Math.abs(l.bei! - 3.3) < 1e-6, String(l.bei));
   assert.ok(Math.abs(rows[0].oisSpread! - 50) < 1e-9);
+});
+
+test("robust fit drops a gilt far off the curve and keeps the rest", () => {
+  const truth = { b0: 5, b1: -0.6, b2: 1, tau: 2.5, rmse: 0 };
+  const pts = [1, 2, 3, 4, 5, 7, 10, 12, 15, 20, 25, 30, 40].map((t, i) => ({ t, y: nsValue(truth, t) + (i % 2 ? 0.02 : -0.02) }));
+  pts.push({ t: 6, y: nsValue(truth, 6) + 1.5 }); // a 150bp outlier
+  const { fit, dropped } = robustFit(pts);
+  assert.deepEqual([...dropped], [pts.length - 1]);
+  assert.ok(Math.abs(nsValue(fit!, 6) - nsValue(truth, 6)) < 0.03);
 });

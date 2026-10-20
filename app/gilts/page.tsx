@@ -40,6 +40,7 @@ export default async function GiltsPage() {
         bei: r.bei,
         modDuration: r.modDuration,
         live: r.live,
+        outlier: r.outlier,
         ...ch,
       };
     });

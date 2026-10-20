@@ -60,3 +60,28 @@ export function fitNelsonSiegel(points: { t: number; y: number }[]): NelsonSiege
   }
   return best;
 }
+
+/**
+ * Fits, drops points far from the curve (more than max(minBp, 4×MAD) away), and refits.
+ * Stops one stale or mispriced gilt from bending the whole curve. Returns the indices dropped.
+ */
+export function robustFit(points: { t: number; y: number }[], minBp = 25): { fit: NelsonSiegel | null; dropped: Set<number> } {
+  const dropped = new Set<number>();
+  let fit = fitNelsonSiegel(points);
+  for (let pass = 0; pass < 2 && fit; pass++) {
+    const res = points.map((p) => p.y - nsValue(fit!, p.t));
+    const kept = res.filter((_, i) => !dropped.has(i)).map(Math.abs).sort((a, b) => a - b);
+    const mad = kept[Math.floor(kept.length / 2)] ?? 0;
+    const limit = Math.max(minBp / 100, 4 * mad);
+    let changed = false;
+    res.forEach((r, i) => {
+      if (!dropped.has(i) && Math.abs(r) > limit) {
+        dropped.add(i);
+        changed = true;
+      }
+    });
+    if (!changed) break;
+    fit = fitNelsonSiegel(points.filter((_, i) => !dropped.has(i))) ?? fit;
+  }
+  return { fit, dropped };
+}

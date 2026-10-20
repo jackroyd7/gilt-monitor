@@ -35,7 +35,7 @@ const fmtDate = (ms: number) =>
   new Date(ms).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "2-digit", timeZone: "UTC" });
 const toX = (x: number | string) => (typeof x === "string" ? Date.parse(x + "T00:00:00Z") : x);
 
-const RANGES = [
+export const RANGES = [
   { key: "1M", days: 31 },
   { key: "3M", days: 92 },
   { key: "6M", days: 183 },
@@ -43,6 +43,23 @@ const RANGES = [
   { key: "2Y", days: 731 },
   { key: "All", days: Infinity },
 ];
+
+/** Date-range buttons; used inside SeriesChart, or once above several charts sharing a range. */
+export function RangePicker({ value, onChange }: { value: string; onChange: (key: string) => void }) {
+  return (
+    <div className="flex gap-0.5 rounded-md bg-surface-2 p-0.5 text-xs">
+      {RANGES.map((r) => (
+        <button
+          key={r.key}
+          onClick={() => onChange(r.key)}
+          className={`rounded px-2 py-0.5 ${value === r.key ? "bg-surface text-ink shadow-sm" : "text-ink-2"}`}
+        >
+          {r.key}
+        </button>
+      ))}
+    </div>
+  );
+}
 
 export function Legend({ series }: { series: Pick<Series, "key" | "name" | "color" | "dashed">[] }) {
   if (series.length < 2) return null;
@@ -100,6 +117,8 @@ export function SeriesChart({
   height = 280,
   zeroLine = unit === "bp",
   defaultRange = "1Y",
+  range: controlledRange,
+  showLegend = true,
 }: {
   series: Series[];
   xKind: XKind;
@@ -107,8 +126,12 @@ export function SeriesChart({
   height?: number;
   zeroLine?: boolean;
   defaultRange?: string;
+  /** Set to drive the range from outside (e.g. several stacked charts); hides the picker. */
+  range?: string;
+  showLegend?: boolean;
 }) {
-  const [range, setRange] = useState(defaultRange);
+  const [ownRange, setRange] = useState(defaultRange);
+  const range = controlledRange ?? ownRange;
 
   const { data, xMin } = useMemo(() => {
     const all = series.flatMap((s) => s.points.map((p) => toX(p[0])));
@@ -134,20 +157,8 @@ export function SeriesChart({
   return (
     <div className="space-y-2">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <Legend series={series} />
-        {xKind === "date" && (
-          <div className="flex gap-0.5 rounded-md bg-surface-2 p-0.5 text-xs">
-            {RANGES.map((r) => (
-              <button
-                key={r.key}
-                onClick={() => setRange(r.key)}
-                className={`rounded px-2 py-0.5 ${range === r.key ? "bg-surface text-ink shadow-sm" : "text-ink-2"}`}
-              >
-                {r.key}
-              </button>
-            ))}
-          </div>
-        )}
+        {showLegend && <Legend series={series} />}
+        {xKind === "date" && controlledRange == null && <RangePicker value={range} onChange={setRange} />}
       </div>
       <div style={{ height }} className="w-full">
         {empty ? (
@@ -237,27 +248,35 @@ export interface ScatterPoint {
   extra?: string;
 }
 
-/** Gilt yields vs maturity, with the fitted curve as a line. Click a point to select it. */
+/**
+ * Gilt yields (or ASW) vs maturity, optionally with a fitted curve. Hovering a dot shows
+ * the gilt and its value; clicking selects it.
+ */
 export function GiltScatter({
   points,
-  fitted,
+  fitted = [],
   label = "Conventional gilts",
+  valueLabel = "Yield",
+  unit = "pct",
   selected = [],
   onSelect,
   height = 340,
 }: {
   points: ScatterPoint[];
-  fitted: { t: number; y: number }[];
+  fitted?: { t: number; y: number }[];
   label?: string;
+  valueLabel?: string;
+  unit?: "pct" | "bp";
   selected?: string[];
   onSelect?: (id: string) => void;
   height?: number;
 }) {
   const legend = [
     { key: "c", name: label, color: "var(--series-1)" },
-    { key: "f", name: "Nelson-Siegel fit", color: "var(--series-2)" },
+    ...(fitted.length ? [{ key: "f", name: "Nelson-Siegel fit", color: "var(--series-2)" }] : []),
   ];
   const picked = points.filter((p) => p.id && selected.includes(p.id));
+  const fmt = (v: number) => (unit === "bp" ? `${v.toFixed(1)}bp` : `${v.toFixed(3)}%`);
   return (
     <div className="space-y-2">
       <Legend series={legend} />
@@ -266,24 +285,32 @@ export function GiltScatter({
           <ComposedChart margin={{ top: 8, right: 12, bottom: 0, left: 0 }}>
             <CartesianGrid vertical={false} />
             <XAxis dataKey="t" type="number" domain={[0, "dataMax"]} tickFormatter={fmtTenor} allowDuplicatedCategory={false} />
-            <YAxis dataKey="y" width={48} domain={["auto", "auto"]} tickFormatter={(v: number) => v.toFixed(2)} />
+            <YAxis
+              dataKey="y"
+              width={48}
+              domain={["auto", "auto"]}
+              tickFormatter={(v: number) => (unit === "bp" ? v.toFixed(0) : v.toFixed(2))}
+            />
+            {unit === "bp" && <ReferenceLine y={0} stroke="var(--axis)" />}
             <Tooltip
+              shared={false}
               cursor={false}
               content={({ active, payload }) => {
-                const p = payload?.[0]?.payload as ScatterPoint | undefined;
-                if (!active || !p?.name) return null;
+                // Only describe gilts (dots), not points on the fitted line.
+                const p = payload?.map((x) => x.payload as ScatterPoint).find((x) => x?.name);
+                if (!active || !p) return null;
                 return (
                   <div className="card px-3 py-2 text-xs shadow-sm">
                     <div className="font-medium text-ink">{p.name}</div>
                     <div className="num text-ink-2">
-                      {fmtTenor(p.t)} · {p.y.toFixed(3)}%{p.extra ? ` · ${p.extra}` : ""}
+                      {valueLabel} <span className="text-ink">{fmt(p.y)}</span> · {fmtTenor(p.t)}
+                      {p.extra ? ` · ${p.extra}` : ""}
                     </div>
                     {onSelect && <div className="mt-1 text-muted">Click to {selected.includes(p.id ?? "") ? "deselect" : "select"}</div>}
                   </div>
                 );
               }}
             />
-            <Line data={fitted} dataKey="y" stroke="var(--series-2)" strokeWidth={2} dot={false} isAnimationActive={false} />
             <Scatter
               data={points}
               fill="var(--series-1)"
@@ -296,6 +323,17 @@ export function GiltScatter({
                 if (id && onSelect) onSelect(id);
               }}
             />
+            {fitted.length > 0 && (
+              // Drawn as a joined-up scatter with invisible points rather than a <Line>, so the
+              // chart keeps per-dot tooltips instead of switching to axis tooltips.
+              <Scatter
+                data={fitted}
+                line={{ stroke: "var(--series-2)", strokeWidth: 2 }}
+                shape={() => <g />}
+                legendType="none"
+                isAnimationActive={false}
+              />
+            )}
             {picked.length > 0 && (
               <Scatter data={picked} fill="var(--surface)" stroke="var(--ink)" strokeWidth={2.5} isAnimationActive={false} />
             )}

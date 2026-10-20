@@ -4,7 +4,7 @@
 
 import { giltModDuration } from "./bond";
 import { addDays, dateOnOrBefore, interpolate, latestDate, sortedDates, toSemiannual, yearsBetween } from "./curve";
-import { fitNelsonSiegel, nsValue } from "./fit";
+import { nsValue, robustFit } from "./fit";
 import type { CurveId, CurveSet, Gilt, GiltSnapshot } from "./types";
 
 type Curves = Partial<Record<CurveId, CurveSet>>;
@@ -156,6 +156,8 @@ export interface GiltRow extends Gilt {
   oisSpread: number | null;
   /** Linkers only: conventional curve (fitted) minus the linker's real yield, in %. */
   bei: number | null;
+  /** Left out of the curve fit and the yield chart (very short, or far off the curve). */
+  outlier: boolean;
   bundSpread: number | null; // bp vs Bund at matched maturity
   ustSpread: number | null; // bp vs UST at matched maturity
 }
@@ -163,13 +165,19 @@ export interface GiltRow extends Gilt {
 export function giltRows(snap: GiltSnapshot | undefined, c: Curves) {
   if (!snap) return { rows: [] as GiltRow[], fit: null, realFit: null, asOf: undefined };
   const asOf = snap.asOf;
-  const fitOf = (type: Gilt["type"], minYears: number) =>
-    fitNelsonSiegel(
-      snap.gilts
-        .filter((g) => g.type === type && g.yield != null)
-        .map((g) => ({ t: yearsBetween(asOf, g.maturity), y: g.yield as number }))
-        .filter((p) => p.t > minYears),
-    );
+  // Gilts left out of the curve fit and the yield chart: too short to have a meaningful
+  // yield, or priced far away from the fitted curve.
+  const outliers = new Set<string>();
+  const fitOf = (type: Gilt["type"], minYears: number) => {
+    const used = snap.gilts
+      .filter((g) => g.type === type && g.yield != null)
+      .map((g) => ({ isin: g.isin, t: yearsBetween(asOf, g.maturity), y: g.yield as number }));
+    for (const p of used) if (p.t <= minYears) outliers.add(p.isin);
+    const pts = used.filter((p) => p.t > minYears);
+    const { fit, dropped } = robustFit(pts);
+    dropped.forEach((i) => outliers.add(pts[i].isin));
+    return fit;
+  };
   const fit = fitOf("conventional", 0.5);
   // Short linkers are dominated by known inflation accrual, so leave them out of the real fit.
   const realFit = fitOf("index-linked", 1.5);
@@ -210,6 +218,7 @@ export function giltRows(snap: GiltSnapshot | undefined, c: Curves) {
       richCheap: fitted != null && g.yield != null ? (g.yield - fitted) * 100 : null,
       oisSpread,
       bei,
+      outlier: outliers.has(g.isin),
       bundSpread: isConv ? spread(g.yield, c.de_bund, dBund, years) : null,
       ustSpread: isConv ? spread(g.yield, c.us_ust, dUst, years) : null,
     };

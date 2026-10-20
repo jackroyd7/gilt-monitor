@@ -86,6 +86,8 @@ for (let y = 2027; y <= 2073; y += y < 2040 ? 1 : 3) {
   }
 }
 const last = dates.length - 1;
+// A gilt days from maturity with a meaningless yield, which the chart should hide.
+gilts.unshift({ isin: "GB00DEMOSHRT", name: "0.375% Treasury Gilt 2026", type: "conventional", coupon: 0.375, maturity: addDays(end, 3), cleanPrice: 99.97, dirtyPrice: null, yield: 9.8 });
 const realAt = (i: number, t: number) => uk(i, t) - realGap[i] + 0.002 * t;
 for (const y of [2029, 2033, 2037, 2041, 2046, 2051, 2058, 2065, 2073]) {
   const t = y - Number(end.slice(0, 4));

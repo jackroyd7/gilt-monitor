@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useRef, useState } from "react";
-import { GiltScatter, SeriesChart, type Series } from "./charts";
+import { GiltScatter, RangePicker, SeriesChart, type Series } from "./charts";
 
 export interface MonitorRow {
   isin: string;
@@ -21,6 +21,7 @@ export interface MonitorRow {
   m1: number | null;
   live?: boolean;
   held?: string;
+  outlier?: boolean; // hidden from the curve chart
 }
 
 type Filter = "conventional" | "index-linked" | "all";
@@ -48,11 +49,15 @@ export default function GiltMonitor({
   const [q, setQ] = useState("");
   const [sort, setSort] = useState<{ key: SortKey; dir: 1 | -1 }>({ key: "maturity", dir: 1 });
   const [selected, setSelected] = useState<string[]>([]);
-  const [modePicked, setMode] = useState<"yield" | "price" | "spread">("yield");
+  const [plot, setPlot] = useState<"yield" | "asw">("yield");
+  const [mode, setMode] = useState<"yield" | "price">("yield");
+  const [hiddenLines, setHiddenLines] = useState<string[]>([]);
+  const [range, setRange] = useState("All");
   const [history, setHistory] = useState<History>({});
   const [loading, setLoading] = useState(false);
   const requested = useRef(new Set<string>());
-  const mode = modePicked === "spread" && selected.length < 2 ? "yield" : modePicked;
+  const toggleLine = (key: string) =>
+    setHiddenLines((h) => (h.includes(key) ? h.filter((k) => k !== key) : [...h, key]));
 
   // Each gilt's history is fetched once, the first time it is selected.
   const loadHistory = (isin: string) => {
@@ -86,40 +91,49 @@ export default function GiltMonitor({
   }, [rows, filter, q, sort]);
 
   const scatterType = filter === "index-linked" ? "index-linked" : "conventional";
-  const scatterPoints = rows
-    .filter((r) => r.type === scatterType && r.yield != null)
+  const ofType = rows.filter((r) => r.type === scatterType);
+  const hidden = ofType.filter((r) => r.outlier && r.yield != null);
+  const scatterPoints = ofType
+    .filter((r) => !r.outlier && (plot === "yield" ? r.yield : r.oisSpread) != null)
     .map((r) => ({
       id: r.isin,
       t: r.years,
-      y: r.yield as number,
+      y: (plot === "yield" ? r.yield : r.oisSpread) as number,
       name: r.name,
-      extra: r.richCheap != null ? `${f(r.richCheap, 1, true)}bp vs fit` : undefined,
+      extra:
+        plot === "yield"
+          ? r.richCheap != null ? `${f(r.richCheap, 1, true)}bp vs fit` : undefined
+          : r.yield != null ? `yield ${f(r.yield, 3)}%` : undefined,
     }));
 
   const byIsin = useMemo(() => new Map(rows.map((r) => [r.isin, r])), [rows]);
-  const chartSeries: Series[] = useMemo(() => {
+  // Top chart: each selected gilt's yield (or price). Bottom chart: the yield spread
+  // between them in bp; kept separate because % and bp can't share one axis honestly.
+  const { lineSeries, spreadSeries } = useMemo(() => {
     const pts = (isin: string, idx: 1 | 2) =>
       (history[isin]?.points ?? []).filter((p) => p[idx] != null).map((p) => [p[0], p[idx] as number] as [string, number]);
-    if (mode === "spread" && selected.length === 2) {
-      const [a, b] = selected;
-      const ya = new Map(pts(a, 2));
-      const spread = pts(b, 2).flatMap(([d, y]) => (ya.has(d) ? [[d, (y - ya.get(d)!) * 100] as [string, number]] : []));
-      return [
-        {
-          key: "spread",
-          name: `${byIsin.get(b)?.name ?? b} − ${byIsin.get(a)?.name ?? a}`,
-          color: "var(--series-3)",
-          points: spread,
-        },
-      ];
-    }
-    return selected.map((isin, i) => ({
+    const lineSeries: Series[] = selected.map((isin, i) => ({
       key: isin,
       name: byIsin.get(isin)?.name ?? history[isin]?.name ?? isin,
       color: PICK_COLORS[i],
       points: pts(isin, mode === "price" ? 1 : 2),
     }));
+    let spreadSeries: Series | null = null;
+    if (selected.length === 2) {
+      const [a, b] = selected;
+      const ya = new Map(pts(a, 2));
+      spreadSeries = {
+        key: "spread",
+        name: `Yield spread: ${byIsin.get(b)?.name ?? b} − ${byIsin.get(a)?.name ?? a}`,
+        color: "var(--series-3)",
+        points: pts(b, 2).flatMap(([d, y]) => (ya.has(d) ? [[d, (y - ya.get(d)!) * 100] as [string, number]] : [])),
+      };
+    }
+    return { lineSeries, spreadSeries };
   }, [history, selected, mode, byIsin]);
+  const visibleLines = lineSeries.filter((s) => !hiddenLines.includes(s.key));
+  const showSpread = spreadSeries != null && !hiddenLines.includes("spread");
+  const allSeries = spreadSeries ? [...lineSeries, spreadSeries] : lineSeries;
 
   const cols: { key: SortKey; label: string; title?: string; fmt: (r: MonitorRow) => string; linkerOnly?: boolean }[] = [
     { key: "maturity", label: "Maturity", fmt: (r) => r.maturity },
@@ -174,11 +188,31 @@ export default function GiltMonitor({
             className="ml-auto w-48 rounded-md border border-line bg-surface px-2 py-1 text-ink"
           />
         </div>
-        <div className="mt-3">
+        <div className="mt-3 flex flex-wrap items-center gap-2 text-xs">
+          <div className="flex gap-0.5 rounded-md bg-surface-2 p-0.5">
+            {(["yield", "asw"] as const).map((k) => (
+              <button
+                key={k}
+                onClick={() => setPlot(k)}
+                className={`rounded px-2.5 py-0.5 ${plot === k ? "bg-surface text-ink shadow-sm" : "text-ink-2"}`}
+              >
+                {k === "yield" ? (scatterType === "index-linked" ? "Real yield" : "Yield") : "ASW"}
+              </button>
+            ))}
+          </div>
+          {hidden.length > 0 && (
+            <span className="text-muted" title={hidden.map((r) => r.name).join(", ")}>
+              {hidden.length} hidden from chart (very short-dated or far off the curve; hover for names)
+            </span>
+          )}
+        </div>
+        <div className="mt-2">
           <GiltScatter
             points={scatterPoints}
-            fitted={fits[scatterType]}
-            label={scatterType === "index-linked" ? "Linkers (real yield)" : "Conventional gilts"}
+            fitted={plot === "yield" ? fits[scatterType] : []}
+            label={scatterType === "index-linked" ? "Linkers" : "Conventional gilts"}
+            valueLabel={plot === "yield" ? (scatterType === "index-linked" ? "Real yield" : "Yield") : "ASW"}
+            unit={plot === "yield" ? "pct" : "bp"}
             selected={selected}
             onSelect={toggle}
             height={280}
@@ -190,50 +224,74 @@ export default function GiltMonitor({
         <div className="flex flex-wrap items-center gap-2">
           <h2 className="mr-2 text-sm font-semibold text-ink">History</h2>
           {selected.length === 0 && (
-            <span className="text-xs text-muted">Tick up to two gilts in the table (or click points above) to chart them.</span>
+            <span className="text-xs text-muted">Tick up to two gilts in the table (or click points above) to chart their yields and the spread between them.</span>
           )}
-          {selected.map((isin, i) => (
-            <button
-              key={isin}
-              onClick={() => toggle(isin)}
-              className="inline-flex items-center gap-1.5 rounded-full border border-line px-2.5 py-0.5 text-xs text-ink"
-              title="Remove"
-            >
-              <span className="inline-block h-2 w-2 rounded-full" style={{ background: PICK_COLORS[i] }} />
-              {byIsin.get(isin)?.name ?? isin} ✕
-            </button>
-          ))}
-          {selected.length > 0 && (
-            <div className="ml-auto flex gap-0.5 rounded-md bg-surface-2 p-0.5 text-xs">
-              {(["yield", "price", "spread"] as const).map((m) => (
+          {allSeries.map((line) => {
+            const on = !hiddenLines.includes(line.key);
+            return (
+              <span key={line.key} className="inline-flex items-center rounded-full border border-line text-xs">
                 <button
-                  key={m}
-                  disabled={m === "spread" && selected.length < 2}
-                  onClick={() => setMode(m)}
-                  className={`rounded px-2.5 py-0.5 capitalize disabled:opacity-40 ${mode === m ? "bg-surface text-ink shadow-sm" : "text-ink-2"}`}
-                  title={m === "spread" ? "Second gilt's yield minus the first's, in bp" : undefined}
+                  onClick={() => toggleLine(line.key)}
+                  aria-pressed={on}
+                  title={on ? "Hide this line" : "Show this line"}
+                  className={`inline-flex items-center gap-1.5 py-0.5 pr-1.5 pl-2.5 ${on ? "text-ink" : "text-muted line-through"}`}
                 >
-                  {m === "spread" ? "Yield spread" : m}
+                  <span className="inline-block h-2 w-2 rounded-full" style={{ background: on ? line.color : "var(--axis)" }} />
+                  {line.key === "spread" ? "Spread" : line.name}
                 </button>
-              ))}
+                {line.key !== "spread" && (
+                  <button onClick={() => toggle(line.key)} title="Remove this gilt" className="pr-2 pl-0.5 text-muted hover:text-ink">
+                    ✕
+                  </button>
+                )}
+              </span>
+            );
+          })}
+          {selected.length > 0 && (
+            <div className="ml-auto flex flex-wrap items-center gap-2">
+              <div className="flex gap-0.5 rounded-md bg-surface-2 p-0.5 text-xs">
+                {(["yield", "price"] as const).map((m) => (
+                  <button
+                    key={m}
+                    onClick={() => setMode(m)}
+                    className={`rounded px-2.5 py-0.5 capitalize ${mode === m ? "bg-surface text-ink shadow-sm" : "text-ink-2"}`}
+                  >
+                    {m}
+                  </button>
+                ))}
+              </div>
+              <RangePicker value={range} onChange={setRange} />
             </div>
           )}
         </div>
         {selected.length > 0 && (
-          <div className="mt-3">
-            {loading && !chartSeries.some((s) => s.points.length) ? (
+          <div className="mt-3 space-y-4">
+            {loading && !lineSeries.some((s) => s.points.length) ? (
               <div className="flex h-[280px] items-center justify-center text-sm text-muted">Loading history…</div>
             ) : (
-              <SeriesChart
-                series={chartSeries}
-                xKind="date"
-                unit={mode === "spread" ? "bp" : mode === "price" ? "price" : "pct"}
-                zeroLine={false}
-                defaultRange="All"
-              />
+              <>
+                {visibleLines.length > 0 && (
+                  <SeriesChart
+                    series={visibleLines}
+                    xKind="date"
+                    unit={mode === "price" ? "price" : "pct"}
+                    zeroLine={false}
+                    range={range}
+                  />
+                )}
+                {showSpread && (
+                  <div>
+                    <div className="mb-1 text-xs text-ink-2">{spreadSeries!.name} (bp)</div>
+                    <SeriesChart series={[spreadSeries!]} xKind="date" unit="bp" range={range} height={180} showLegend={false} />
+                  </div>
+                )}
+                {!visibleLines.length && !showSpread && (
+                  <p className="py-6 text-center text-sm text-muted">All lines hidden. Click a name above to show it.</p>
+                )}
+              </>
             )}
-            {chartSeries.every((s) => s.points.length < 2) && !loading && (
-              <p className="mt-2 text-xs text-muted">
+            {lineSeries.every((s) => s.points.length < 2) && !loading && (
+              <p className="text-xs text-muted">
                 Not much history yet. It builds up daily; run the data job with <code>gilt_days</code> to backfill.
               </p>
             )}
