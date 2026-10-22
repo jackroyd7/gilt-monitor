@@ -1,18 +1,7 @@
 {
- "asOf": "2026-10-21",
+ "asOf": "2026-10-22",
  "source": "UK Debt Management Office",
  "gilts": [
-  {
-   "isin": "GB00BNNGP668",
-   "name": "0 3/8% Treasury Gilt 2026",
-   "type": "conventional",
-   "coupon": 0.375,
-   "maturity": "2026-10-22",
-   "cleanPrice": null,
-   "dirtyPrice": null,
-   "yield": null,
-   "amountInIssue": 33660.598
-  },
   {
    "isin": "GB00BL6C7720",
    "name": "4 1/8% Treasury Gilt 2027",
@@ -89,7 +78,7 @@
    "cleanPrice": null,
    "dirtyPrice": null,
    "yield": null,
-   "amountInIssue": 47199.189
+   "amountInIssue": 47199.093
   },
   {
    "isin": "GB00BMF9LG83",
@@ -481,7 +470,7 @@
    "cleanPrice": null,
    "dirtyPrice": null,
    "yield": null,
-   "amountInIssue": 38219.275
+   "amountInIssue": 42469.275
   },
   {
    "isin": "GB00BYZW3J87",
