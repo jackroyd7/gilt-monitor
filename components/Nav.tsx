@@ -9,6 +9,8 @@ const LINKS = [
   { href: "/gilts", label: "Gilts" },
   { href: "/swaps", label: "vs OIS" },
   { href: "/cross-market", label: "Cross-market" },
+  { href: "/markets", label: "Markets" },
+  { href: "/news", label: "News" },
   { href: "/portfolio", label: "Portfolio" },
 ];
 

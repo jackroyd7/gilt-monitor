@@ -8,6 +8,8 @@ A self-updating dashboard for UK gilts:
 - **vs OIS**: gilt − SONIA OIS by maturity, over time, and for each gilt (an asset-swap proxy).
 - **Cross-market**: gilts against Bunds and US Treasuries by maturity and over time.
 - **Intraday prices**: with a giltsyield.com key, gilt prices and yields refresh about every 10 minutes (their update rate), with a *Refresh prices* button. The dashboard adds 2/5/10/30y yields from a curve fitted to those prices, against the DMO close.
+- **Markets**: equities, FX and commodities via TradingView's free embeddable widgets (ticker tape, overview panels, full chart). Symbols live in `config/markets.ts`.
+- **News**: last week's headlines on the topics in `config/news.ts` (Google News searches plus the Bank of England feed), filterable by topic, searchable, rankable by relevance to gilts and UK rates, with muted words. Cached for 10 minutes; *Refresh* re-fetches.
 - **Portfolio**: your giltsyield.com holdings, P&L, book yields and upcoming cash flows, joined to the market data.
 
 ## How it works

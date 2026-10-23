@@ -1,6 +1,7 @@
 import "server-only";
 import { readFile } from "node:fs/promises";
 import path from "node:path";
+import { withLatestCloses } from "./history";
 import { getLive, withLive, type LiveSnapshot } from "./live";
 import type { CurveId, CurveSet, DataStatus, GiltHistory, GiltSnapshot } from "./types";
 
@@ -47,8 +48,14 @@ export async function loadMarket(): Promise<Market> {
   };
 }
 
-/** Market data with intraday giltsyield.com prices overlaid on the DMO close, when configured. */
-export async function loadMarketWithLive(): Promise<Market & { live: LiveSnapshot | null; dmoGilts: GiltSnapshot | undefined }> {
-  const [market, live] = await Promise.all([loadMarket(), getLive()]);
-  return { ...market, gilts: withLive(market.gilts, live), dmoGilts: market.gilts, live };
+/**
+ * Market data with gilt prices layered: intraday giltsyield.com prices where available,
+ * else the DMO close, else the latest close recorded in the gilt history.
+ */
+export async function loadMarketWithLive(): Promise<
+  Market & { live: LiveSnapshot | null; dmoGilts: GiltSnapshot | undefined; history: GiltHistory | undefined }
+> {
+  const [market, live, history] = await Promise.all([loadMarket(), getLive(), loadGiltHistory()]);
+  const closes = withLatestCloses(market.gilts, history);
+  return { ...market, gilts: withLive(closes, live), dmoGilts: closes, live, history };
 }

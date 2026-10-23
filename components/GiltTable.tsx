@@ -36,7 +36,7 @@ const COLS: Col[] = [
   { key: "oisSpread", label: "ASW bp", fmt: (r) => f(r.oisSpread, 1), title: "Asset-swap proxy: yield minus SONIA OIS at the same maturity (linkers: real yield plus BoE implied RPI)" },
   { key: "bundSpread", label: "vs Bund bp", fmt: (r) => f(r.bundSpread, 1) },
   { key: "ustSpread", label: "vs UST bp", fmt: (r) => f(r.ustSpread, 1) },
-  { key: "live", label: "Price", fmt: (r) => (r.cleanPrice == null && r.yield == null ? "" : r.live ? "intraday" : "close"), title: "intraday = giltsyield.com, close = DMO close of business" },
+  { key: "live", label: "Price", fmt: (r) => (r.cleanPrice == null && r.yield == null ? "" : r.live ? "intraday" : "close"), title: "intraday = giltsyield.com, close = latest close of business" },
 ];
 
 export default function GiltTable({ rows, showHeld = false }: { rows: GiltTableRow[]; showHeld?: boolean }) {

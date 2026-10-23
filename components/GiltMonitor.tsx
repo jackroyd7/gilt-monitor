@@ -323,7 +323,7 @@ export default function GiltMonitor({
                   </th>
                 ))}
                 {hasHeld && <th className="py-1.5 pr-3 text-right font-normal">Held</th>}
-                <th className="py-1.5 text-right font-normal" title="intraday = giltsyield.com, close = DMO close of business">
+                <th className="py-1.5 text-right font-normal" title="intraday = giltsyield.com, close = latest close of business">
                   Src
                 </th>
               </tr>

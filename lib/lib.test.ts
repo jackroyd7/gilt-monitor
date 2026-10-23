@@ -14,9 +14,10 @@ import {
   indexLag,
   excludedGilt,
 } from "./parsers";
-import { closeDate, giltSeries, recordCloses, yieldChanges, emptyHistory, previousBusinessDays } from "./history";
+import { closeDate, giltSeries, recordCloses, yieldChanges, emptyHistory, previousBusinessDays, withLatestCloses, repeatsPreviousClose } from "./history";
 import { normaliseYieldUnits, parseBondRow, parsePriceRow, withLive } from "./live-parse";
 import { giltRows } from "./analytics";
+import { googleNewsUrl, isMuted, mergeItems, parseFeed, scoreItems } from "./news";
 import type { CurveSet } from "./types";
 
 const close = (a: number, b: number, tol: number) => assert.ok(Math.abs(a - b) <= tol, `${a} vs ${b}`);
@@ -272,4 +273,58 @@ test("robust fit drops a gilt far off the curve and keeps the rest", () => {
   const { fit, dropped } = robustFit(pts);
   assert.deepEqual([...dropped], [pts.length - 1]);
   assert.ok(Math.abs(nsValue(fit!, 6) - nsValue(truth, 6)) < 0.03);
+});
+
+test("news: parses Google News RSS (title/source split) and Atom, merges topics, scores", () => {
+  const rss = `<?xml version="1.0"?><rss version="2.0"><channel><title>"gilts" - Google News</title>
+    <item><title>Gilt yields jump after budget - Financial Times</title><link>https://news.google.com/rss/articles/abc</link>
+      <pubDate>Fri, 23 Oct 2026 09:15:00 GMT</pubDate><source url="https://www.ft.com">Financial Times</source></item>
+    <item><title>Pound slips &amp; stocks rise - Reuters</title><link>https://news.google.com/rss/articles/def</link>
+      <pubDate>Thu, 22 Oct 2026 16:00:00 GMT</pubDate></item>
+    <item><title>No date</title><link>https://x</link></item>
+  </channel></rss>`;
+  const a = parseFeed(rss, "gilts");
+  assert.equal(a.length, 2);
+  assert.deepEqual([a[0].title, a[0].source], ["Gilt yields jump after budget", "Financial Times"]);
+  assert.deepEqual([a[1].title, a[1].source], ["Pound slips & stocks rise", "Reuters"]);
+
+  const atom = `<feed xmlns="http://www.w3.org/2005/Atom"><title>Bank of England news</title>
+    <entry><title>Monetary Policy Summary, October 2026</title><link href="https://www.bankofengland.co.uk/mps"/>
+      <updated>2026-10-23T12:00:00Z</updated></entry></feed>`;
+  const b = parseFeed(atom, "boe");
+  assert.deepEqual([b[0].title, b[0].url, b[0].source], ["Monetary Policy Summary, October 2026", "https://www.bankofengland.co.uk/mps", "Bank of England news"]);
+
+  const dup = parseFeed(rss, "fiscal");
+  const merged = mergeItems([a, b, dup]);
+  assert.equal(merged.length, 3);
+  assert.equal(merged[0].title, "Monetary Policy Summary, October 2026"); // newest first
+  assert.deepEqual(merged.find((i) => i.title.startsWith("Gilt"))!.topics, ["gilts", "fiscal"]);
+
+  const scored = scoreItems(merged, ["gilt", "yields", "budget"], Date.parse("2026-10-23T13:00:00Z"));
+  const top = [...scored].sort((x, y) => y.score - x.score)[0];
+  assert.equal(top.title, "Gilt yields jump after budget");
+  assert.ok(isMuted("Pound slips & stocks rise", ["STOCKS"]));
+  assert.ok(!isMuted("Pound slips", ["", " "]));
+  assert.ok(googleNewsUrl('"gilt yields"').includes("when%3A7d"));
+});
+
+test("gilts without a price fall back to their latest recorded close", () => {
+  const g = (isin: string, y: number | null) => ({ isin, name: isin, type: "conventional" as const, coupon: 4, maturity: "2035-01-01", cleanPrice: null, dirtyPrice: null, yield: y });
+  const h = emptyHistory();
+  recordCloses(h, "2026-10-21", [g("A", 4.1), g("B", 4.4)]);
+  recordCloses(h, "2026-10-22", [g("A", 4.2)]);
+  const out = withLatestCloses({ asOf: "2026-10-23", source: "", gilts: [g("A", null), g("B", null), g("C", null), g("D", 5)] }, h)!;
+  assert.deepEqual(out.gilts.map((x) => [x.isin, x.yield, x.priceDate]), [["A", 4.2, "2026-10-22"], ["B", 4.4, "2026-10-21"], ["C", null, undefined], ["D", 5, undefined]]);
+  assert.equal(out.priceDate, "2026-10-22");
+});
+
+test("a snapshot that repeats the previous close is detected", () => {
+  const g = (isin: string, p: number) => ({ isin, name: isin, type: "conventional" as const, coupon: 4, maturity: "2035-01-01", cleanPrice: p, dirtyPrice: null, yield: 4 });
+  const h = emptyHistory();
+  const day1 = Array.from({ length: 20 }, (_, i) => g(`G${i}`, 90 + i));
+  recordCloses(h, "2026-10-22", day1);
+  assert.equal(repeatsPreviousClose(h, "2026-10-23", day1), "2026-10-22");
+  const moved = day1.map((x, i) => (i % 3 ? { ...x, cleanPrice: x.cleanPrice + 0.12 } : x));
+  assert.equal(repeatsPreviousClose(h, "2026-10-23", moved), null);
+  assert.equal(repeatsPreviousClose(emptyHistory(), "2026-10-23", day1), null);
 });

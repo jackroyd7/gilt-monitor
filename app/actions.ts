@@ -8,3 +8,10 @@ export async function refreshLive() {
   await getLive({ force: true });
   refresh();
 }
+
+/** Re-fetches all news feeds now and re-renders the page. */
+export async function refreshNews() {
+  const { getNews } = await import("@/lib/news-fetch");
+  await getNews({ force: true });
+  refresh();
+}

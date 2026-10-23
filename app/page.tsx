@@ -59,7 +59,7 @@ export default async function Dashboard() {
                   <div className="text-xs text-ink-2">Gilt {m.t}y · intraday fit</div>
                   <div className="mt-1 text-2xl font-semibold text-ink">{m.now == null ? "–" : `${m.now.toFixed(2)}%`}</div>
                   <div className="num mt-0.5 text-xs text-ink-2">
-                    vs DMO close {m.chg == null ? "–" : `${m.chg > 0 ? "▲" : m.chg < 0 ? "▼" : ""}${Math.abs(m.chg).toFixed(1)}bp`}
+                    vs last close {m.chg == null ? "–" : `${m.chg > 0 ? "▲" : m.chg < 0 ? "▼" : ""}${Math.abs(m.chg).toFixed(1)}bp`}
                   </div>
                 </div>
               ))}

@@ -3,8 +3,9 @@ name: Update market data
 on:
   schedule:
     # Weekdays. DMO prices land in the evening; BoE curves for a day appear by the next
-    # working day, so the morning and midday runs pick those up.
-    - cron: "15 7,13,19 * * 1-5"
+    # working day, so the morning and midday runs pick those up. The 22:15 run catches the
+    # day's gilt closes if they weren't published by the 19:15 run.
+    - cron: "15 7,13,19,22 * * 1-5"
   workflow_dispatch:
     inputs:
       backfill:

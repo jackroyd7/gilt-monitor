@@ -4,7 +4,8 @@ const NAMES: Record<string, string> = {
   boe: "Bank of England curves",
   bundesbank: "Bundesbank Bund curve",
   ust: "US Treasury curve",
-  dmo: "DMO gilt prices",
+  dmo: "DMO gilts in issue",
+  gilt_history: "Gilt closes",
 };
 
 export default async function SourceStatus() {

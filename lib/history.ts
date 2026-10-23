@@ -2,7 +2,7 @@
 // Pure functions so they can be used by the job, the pages and the tests.
 
 import { addDays } from "./curve";
-import type { Gilt, GiltHistory } from "./types";
+import type { Gilt, GiltHistory, GiltSnapshot } from "./types";
 
 export const emptyHistory = (): GiltHistory => ({ gilts: {}, rows: {} });
 
@@ -123,4 +123,48 @@ export function closeDate(priceTime: string | undefined, at = new Date()): strin
   if (stamped === now.date) return now.hour >= 17 && weekday ? now.date : null;
   // No usable timestamp: assume prices are the latest close.
   return now.hour >= 17 && weekday ? now.date : previousBusinessDays(now.date, 1)[0];
+}
+
+/**
+ * Fills gilts that have no price in the snapshot with their latest recorded close, so the
+ * site still shows prices if the DMO report or giltsyield.com is unavailable.
+ */
+export function withLatestCloses(snap: GiltSnapshot | undefined, hist: GiltHistory | undefined): GiltSnapshot | undefined {
+  if (!snap || !hist) return snap;
+  const dates = Object.keys(hist.rows).sort();
+  let filled = false;
+  const gilts = snap.gilts.map((g) => {
+    if (g.yield != null || g.cleanPrice != null) return g;
+    for (let i = dates.length - 1; i >= 0; i--) {
+      const v = hist.rows[dates[i]][g.isin];
+      if (v && (v[0] != null || v[1] != null)) {
+        filled = true;
+        return { ...g, cleanPrice: v[0], yield: v[1], priceDate: dates[i] };
+      }
+    }
+    return g;
+  });
+  if (!filled) return snap;
+  const priceDate = gilts.map((g) => g.priceDate).filter(Boolean).sort().pop();
+  return { ...snap, gilts, priceDate: snap.priceDate ?? priceDate };
+}
+
+/**
+ * True when a snapshot's clean prices are (almost) all identical to the latest close
+ * already recorded before `date`: the source is still serving the previous day's close,
+ * so recording it under `date` would invent a day with no moves.
+ */
+export function repeatsPreviousClose(hist: GiltHistory, date: string, gilts: Gilt[]): string | null {
+  const prior = Object.keys(hist.rows).filter((d) => d < date).sort().pop();
+  if (!prior) return null;
+  const row = hist.rows[prior];
+  let shared = 0;
+  let same = 0;
+  for (const g of gilts) {
+    const prev = row[g.isin]?.[0];
+    if (prev == null || g.cleanPrice == null) continue;
+    shared++;
+    if (Math.abs(prev - g.cleanPrice) < 1e-6) same++;
+  }
+  return shared >= 10 && same / shared >= 0.9 ? prior : null;
 }

@@ -3,7 +3,7 @@ import GiltMonitor, { type MonitorRow } from "@/components/GiltMonitor";
 import LiveBar from "@/components/LiveBar";
 import { PageHeader } from "@/components/Tiles";
 import { giltRows } from "@/lib/analytics";
-import { loadGiltHistory, loadMarketWithLive } from "@/lib/data";
+import { loadMarketWithLive } from "@/lib/data";
 import { nsValue, type NelsonSiegel } from "@/lib/fit";
 import { giltSeries, londonNow, yieldChanges } from "@/lib/history";
 import { liveInfo } from "@/lib/live";
@@ -15,7 +15,7 @@ function fitLine(fit: NelsonSiegel | null, from: number, to: number) {
 
 export default async function GiltsPage() {
   await connection(); // render per request so intraday prices are current
-  const [{ curves, gilts, live }, hist] = await Promise.all([loadMarketWithLive(), loadGiltHistory()]);
+  const { curves, gilts, live, history: hist } = await loadMarketWithLive();
   const { rows, fit, realFit, asOf } = giltRows(gilts, curves);
   const liveDate = live?.gilts.length ? londonNow(new Date(live.fetchedAt)).date : undefined;
 
@@ -55,7 +55,7 @@ export default async function GiltsPage() {
     <>
       <PageHeader title={`Gilts${asOf ? ` · ${asOf}` : ""}`}>
         Every conventional and 3-month-lag index-linked gilt. Prices are intraday from giltsyield.com where available,
-        otherwise the DMO close. Tick up to two gilts (or click points on the chart) to plot their yield or price
+        otherwise the latest close. Tick up to two gilts (or click points on the chart) to plot their yield or price
         history, or the yield spread between them.
       </PageHeader>
       <LiveBar live={liveInfo(live)} />

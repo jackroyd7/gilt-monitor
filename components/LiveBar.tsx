@@ -24,7 +24,7 @@ export default function LiveBar({ live }: { live: LiveInfo | null }) {
   if (!live) {
     return (
       <p className="mb-4 text-xs text-muted">
-        Prices are the DMO close. Set <code>GILTSYIELD_API_KEY</code> for intraday prices from giltsyield.com.
+        Prices are the latest close. Set <code>GILTSYIELD_API_KEY</code> for intraday prices from giltsyield.com.
       </p>
     );
   }
@@ -33,7 +33,7 @@ export default function LiveBar({ live }: { live: LiveInfo | null }) {
     <div className="mb-4 flex flex-wrap items-center gap-x-4 gap-y-1 rounded-md border border-line bg-surface px-3 py-2 text-xs text-ink-2">
       <span className="font-medium text-ink">
         <span style={{ color: ok ? "var(--good)" : "var(--critical)" }}>{ok ? "●" : "▲"}</span>{" "}
-        {ok ? "Intraday prices · giltsyield.com" : "Intraday prices unavailable · showing DMO close"}
+        {ok ? "Intraday prices · giltsyield.com" : "Intraday prices unavailable · showing latest close"}
       </span>
       {live.priceTime && <span>prices as of {ukTime(live.priceTime)}</span>}
       <span>fetched {ukTime(live.fetchedAt)} UK</span>

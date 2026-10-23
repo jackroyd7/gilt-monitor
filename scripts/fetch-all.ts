@@ -8,7 +8,7 @@
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { addDays, latestDate, mergeCurveSets } from "../lib/curve";
-import { closeDate, emptyHistory, historyJson, previousBusinessDays, pruneHistory, recordCloses } from "../lib/history";
+import { closeDate, emptyHistory, historyJson, previousBusinessDays, pruneHistory, recordCloses, repeatsPreviousClose } from "../lib/history";
 import { fetchAllPrices } from "../lib/live-core";
 import type { CurveSet, DataStatus, GiltHistory, GiltSnapshot } from "../lib/types";
 import { fetchBoe } from "./sources/boe";
@@ -108,14 +108,17 @@ async function main() {
       if (days.length) notes.push(`backfilled ${filled}/${days.length} days`);
       const snap = await fetchAllPrices();
       const d = closeDate(snap.priceTime);
-      if (d) notes.push(`giltsyield ${d}: ${recordCloses(hist, d, snap.gilts)} gilts`);
-      else notes.push("giltsyield prices are intraday; close not recorded yet");
+      const stale = d ? repeatsPreviousClose(hist, d, snap.gilts) : null;
+      notes.push(`giltsyield price time ${snap.priceTime ?? "not given"}`);
+      if (!d) notes.push("prices are intraday; close not recorded yet");
+      else if (stale) notes.push(`prices unchanged from the ${stale} close; not recorded as ${d}`);
+      else notes.push(`giltsyield ${d}: ${recordCloses(hist, d, snap.gilts)} gilts`);
     }
     if (dmoSnapshot) {
       // DMO closes fill any gilt giltsyield didn't price (or everything, without a key).
       const d = dmoSnapshot.priceDate ?? closeDate(undefined)!;
       const have = hist.rows[d] ?? {};
-      const missing = dmoSnapshot.gilts.filter((g) => !have[g.isin]);
+      const missing = repeatsPreviousClose(hist, d, dmoSnapshot.gilts) ? [] : dmoSnapshot.gilts.filter((g) => !have[g.isin]);
       if (missing.length) notes.push(`DMO ${d}: ${recordCloses(hist, d, missing)} gilts`);
     }
     pruneHistory(hist, keepFrom);
