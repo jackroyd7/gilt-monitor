@@ -1,44 +1,20 @@
-import { Card, PageHeader } from "@/components/Tiles";
-import TradingViewWidget from "@/components/TradingViewWidget";
-import { MARKET_GROUPS, TICKER_TAPE } from "@/config/markets";
+import MarketsBoard from "@/components/MarketsBoard";
+import { PageHeader } from "@/components/Tiles";
 
 export const metadata = { title: "Markets · Gilt Monitor" };
 
-const CHART_PATH = "/markets/chart";
-
-export default function MarketsPage() {
+export default async function MarketsPage({ searchParams }: PageProps<"/markets">) {
+  const params = await searchParams;
+  const raw = params.tvwidgetsymbol;
+  const symbol = (Array.isArray(raw) ? raw[0] : raw)?.trim() || undefined;
   return (
     <>
       <PageHeader title="Markets">
-        Benchmark equity indices, FX spot rates and commodities from TradingView&apos;s embeddable widgets (some
-        prices are delayed, depending on the exchange). Click any row, or the ticker tape, to open its chart here.
-        Symbols are set in <code>config/markets.ts</code>.
+        Benchmark equity indices, FX spot rates and commodities from TradingView&apos;s embeddable widgets (some prices
+        are delayed, depending on the exchange). Click any instrument for its chart. Symbols are set in{" "}
+        <code>config/markets.ts</code>.
       </PageHeader>
-      <div className="card mb-4 overflow-hidden">
-        <TradingViewWidget
-          widget="ticker-tape"
-          height={46}
-          chartPath={CHART_PATH}
-          config={{ symbols: TICKER_TAPE.map((s) => ({ proName: s.symbol, title: s.name })), showSymbolLogo: false, displayMode: "adaptive" }}
-        />
-      </div>
-      <div className="grid gap-4 lg:grid-cols-3">
-        {MARKET_GROUPS.map((g) => (
-          <Card key={g.title} title={g.title}>
-            <TradingViewWidget
-              widget="market-quotes"
-              height={90 + g.symbols.length * 52}
-              chartPath={CHART_PATH}
-              config={{
-                width: "100%",
-                height: "100%",
-                showSymbolLogo: false,
-                symbolsGroups: [{ name: g.title, symbols: g.symbols.map((s) => ({ name: s.symbol, displayName: s.name })) }],
-              }}
-            />
-          </Card>
-        ))}
-      </div>
+      <MarketsBoard initialSymbol={symbol} />
     </>
   );
 }

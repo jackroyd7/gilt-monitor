@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState, useTransition } from "react";
 import { refreshNews } from "@/app/actions";
 import type { NewsItem } from "@/lib/news";
 import { isMuted } from "@/lib/news";
+import ArticleModal from "./ArticleModal";
 
 const MUTE_KEY = "gilt-monitor:muted-words";
 
@@ -29,6 +30,7 @@ export default function NewsFeed({
   const [muted, setMuted] = useState<string[]>([]);
   const [muteInput, setMuteInput] = useState("");
   const [pending, start] = useTransition();
+  const [open, setOpen] = useState<NewsItem | null>(null);
 
   // Muted words are a per-browser preference.
   useEffect(() => {
@@ -160,8 +162,18 @@ export default function NewsFeed({
             return (
               <li key={i.id} className="py-2.5">
                 {header && <div className="-mt-1 mb-2 pt-1 text-xs font-semibold text-ink-2">{header}</div>}
-                <a href={i.url} target="_blank" rel="noopener noreferrer" className="text-sm font-medium text-ink hover:underline">
+                <button onClick={() => setOpen(i)} className="text-left text-sm font-medium text-ink hover:underline">
                   {i.title}
+                </button>
+                <a
+                  href={i.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="ml-1.5 text-xs text-muted hover:text-ink"
+                  title="Open the original in a new tab"
+                  aria-label="Open original"
+                >
+                  ↗
                 </a>
                 <div className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted">
                   <span className="text-ink-2">{i.source}</span>
@@ -177,6 +189,7 @@ export default function NewsFeed({
           })}
         </ul>
       </section>
+      {open && <ArticleModal item={open} topicLabel={(t) => label[t] ?? t} onClose={() => setOpen(null)} />}
     </div>
   );
 }

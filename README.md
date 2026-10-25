@@ -8,8 +8,8 @@ A self-updating dashboard for UK gilts:
 - **vs OIS**: gilt − SONIA OIS by maturity, over time, and for each gilt (an asset-swap proxy).
 - **Cross-market**: gilts against Bunds and US Treasuries by maturity and over time.
 - **Intraday prices**: with a giltsyield.com key, gilt prices and yields refresh about every 10 minutes (their update rate), with a *Refresh prices* button. The dashboard adds 2/5/10/30y yields from a curve fitted to those prices, against the DMO close.
-- **Markets**: benchmark tables for equity indices, FX spot and commodities (TradingView's free quote widgets). Clicking a row or the ticker tape opens a full chart inside the app (`/markets/chart`), not on tradingview.com. Symbols live in `config/markets.ts`.
-- **News**: last week's headlines on the topics in `config/news.ts` (Google News searches plus the Bank of England feed), filterable by topic, searchable, rankable by relevance to gilts and UK rates, with muted words. Cached for 10 minutes; *Refresh* re-fetches.
+- **Markets**: equity indices, FX spot and commodities as colour-coded ticker cards (TradingView's free widgets). Clicking an instrument opens its chart in a popup (line chart by default; candles, intervals and indicators from the toolbar), not on tradingview.com. Symbols live in `config/markets.ts`.
+- **News**: last week's headlines on the topics in `config/news.ts` (Google News searches plus the Bank of England feed), filterable by topic, searchable, rankable by relevance to gilts and UK rates, with muted words. Cached for 10 minutes; *Refresh* re-fetches. Clicking a headline opens a reader popup: full text for free-to-read sites (reader-mode extraction; paywalled sites are not fetched, and only public web addresses are), otherwise the headline with a link out. With `ANTHROPIC_API_KEY` set, *Summarise for gilts* adds a short Claude summary on request.
 - **Portfolio**: your giltsyield.com holdings, P&L, book yields and upcoming cash flows, joined to the market data.
 
 ## How it works

@@ -17,6 +17,7 @@ import {
 import { closeDate, giltSeries, recordCloses, yieldChanges, emptyHistory, previousBusinessDays, withLatestCloses, repeatsPreviousClose } from "./history";
 import { normaliseYieldUnits, parseBondRow, parsePriceRow, withLive } from "./live-parse";
 import { giltRows } from "./analytics";
+import { articleText, decodeGoogleNewsId, extractArticle, isFetchableUrl, isPaywalled, parseBatchExecute } from "./article";
 import { googleNewsUrl, isMuted, mergeItems, parseFeed, scoreItems } from "./news";
 import type { CurveSet } from "./types";
 
@@ -327,4 +328,40 @@ test("a snapshot that repeats the previous close is detected", () => {
   const moved = day1.map((x, i) => (i % 3 ? { ...x, cleanPrice: x.cleanPrice + 0.12 } : x));
   assert.equal(repeatsPreviousClose(h, "2026-10-23", moved), null);
   assert.equal(repeatsPreviousClose(emptyHistory(), "2026-10-23", day1), null);
+});
+
+test("article reader: extraction, paywalls, address checks, Google News links", () => {
+  const para = (n: number) => `<p>Paragraph ${n}: gilt yields rose as investors weighed the Chancellor's plans for borrowing, with ten-year yields up five basis points on the day and the curve steepening further.</p>`;
+  const html = `<!doctype html><html><head><title>Gilts slide - Example News</title><meta property="og:site_name" content="Example News"></head>
+    <body><nav><a href="/">Home</a><a href="/markets">Markets</a></nav>
+    <article><h1>Gilts slide after Budget</h1><p class="byline">By A Reporter</p>${Array.from({ length: 8 }, (_, i) => para(i)).join("")}
+    <h2>What next</h2><ul><li>Auction on Tuesday</li><li>MPC next month</li></ul>${para(9)}</article>
+    <footer>Cookie policy · Terms</footer></body></html>`;
+  const a = extractArticle(html, "https://example.com/gilts")!;
+  assert.ok(a.words > 200, String(a.words));
+  assert.ok(a.blocks.some((b) => b.kind === "h" && b.text === "What next"));
+  assert.ok(a.blocks.some((b) => b.kind === "li" && b.text === "Auction on Tuesday"));
+  assert.ok(!a.blocks.some((b) => b.text.includes("Cookie policy")));
+  assert.ok(articleText(a).includes("## What next"));
+
+  assert.ok(isPaywalled("https://www.ft.com/content/abc"));
+  assert.ok(isPaywalled("https://markets.ft.com/x"));
+  assert.ok(!isPaywalled("https://www.bbc.co.uk/news/business-1"));
+  assert.ok(!isPaywalled("https://notft.com/x"));
+
+  assert.ok(isFetchableUrl("https://www.theguardian.com/business/x"));
+  for (const bad of ["http://localhost:3000/", "http://127.0.0.1/", "http://169.254.169.254/latest", "http://[::1]/", "file:///etc/passwd", "http://intranet/", "https://user:pw@example.com/", "http://db.internal/"]) {
+    assert.ok(!isFetchableUrl(bad), bad);
+  }
+
+  // Old-style Google News ids embed the URL in base64-encoded protobuf.
+  const oldId = Buffer.from("\x08\x13\x22\x2ahttps://www.bbc.co.uk/news/business-123\xd2\x01\x00", "latin1").toString("base64url");
+  assert.deepEqual(decodeGoogleNewsId(`https://news.google.com/rss/articles/${oldId}?oc=5`), { id: oldId, url: "https://www.bbc.co.uk/news/business-123" });
+  const newId = Buffer.from("\x08\x13\x22\x00AU_yqLabcdef", "latin1").toString("base64url");
+  assert.deepEqual(decodeGoogleNewsId(`https://news.google.com/rss/articles/${newId}`), { id: newId });
+  assert.equal(decodeGoogleNewsId("https://www.bbc.co.uk/news/x"), null);
+
+  const reply = `)]}'\n\n123\n[["wrb.fr","Fbv4je","[\\"garturlres\\",\\"https://www.reuters.com/markets/gilts-1\\",1]",null,null,null,"generic"]]\n`;
+  assert.equal(parseBatchExecute(reply), "https://www.reuters.com/markets/gilts-1");
+  assert.equal(parseBatchExecute("garbage"), null);
 });

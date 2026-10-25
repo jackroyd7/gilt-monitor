@@ -20,7 +20,7 @@ export const TICKER_TAPE: MarketSymbol[] = [
   { symbol: "TVC:GOLD", name: "Gold" },
 ];
 
-// Benchmarks in each Markets table. Clicking a row opens /markets/chart for that symbol.
+// Benchmarks for each asset class on the Markets tab; clicking one opens its chart popup.
 export const MARKET_GROUPS: { title: string; symbols: MarketSymbol[] }[] = [
   {
     title: "Equity indices",
@@ -60,7 +60,7 @@ export const MARKET_GROUPS: { title: string; symbols: MarketSymbol[] }[] = [
 
 /** Friendly name for a symbol, if it's one of ours. */
 export const symbolName = (symbol: string) =>
-  [...TICKER_TAPE, ...MARKET_GROUPS.flatMap((g) => g.symbols)].find((s) => s.symbol === symbol)?.name;
+  [...MARKET_GROUPS.flatMap((g) => g.symbols), ...TICKER_TAPE].find((s) => s.symbol === symbol)?.name;
 
-/** Chart shown when /markets/chart is opened without a symbol. */
+/** Fallback symbol for the chart popup. */
 export const DEFAULT_CHART_SYMBOL = "FX:GBPUSD";
