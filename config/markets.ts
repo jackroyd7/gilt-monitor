@@ -20,11 +20,13 @@ export const TICKER_TAPE: MarketSymbol[] = [
   { symbol: "TVC:GOLD", name: "Gold" },
 ];
 
+// Benchmarks in each Markets table. Clicking a row opens /markets/chart for that symbol.
 export const MARKET_GROUPS: { title: string; symbols: MarketSymbol[] }[] = [
   {
-    title: "Equities",
+    title: "Equity indices",
     symbols: [
       { symbol: "FOREXCOM:UKXGBP", name: "FTSE 100" },
+      { symbol: "FTSE:MCX", name: "FTSE 250" },
       { symbol: "FOREXCOM:SPXUSD", name: "S&P 500" },
       { symbol: "FOREXCOM:NSXUSD", name: "Nasdaq 100" },
       { symbol: "FOREXCOM:EUSTX50", name: "Euro Stoxx 50" },
@@ -33,7 +35,7 @@ export const MARKET_GROUPS: { title: string; symbols: MarketSymbol[] }[] = [
     ],
   },
   {
-    title: "FX",
+    title: "FX spot",
     symbols: [
       { symbol: "FX:GBPUSD", name: "GBP/USD" },
       { symbol: "FX:EURGBP", name: "EUR/GBP" },
@@ -56,5 +58,9 @@ export const MARKET_GROUPS: { title: string; symbols: MarketSymbol[] }[] = [
   },
 ];
 
-/** Symbols offered in the big chart's quick-pick list; any TradingView symbol can be typed in too. */
+/** Friendly name for a symbol, if it's one of ours. */
+export const symbolName = (symbol: string) =>
+  [...TICKER_TAPE, ...MARKET_GROUPS.flatMap((g) => g.symbols)].find((s) => s.symbol === symbol)?.name;
+
+/** Chart shown when /markets/chart is opened without a symbol. */
 export const DEFAULT_CHART_SYMBOL = "FX:GBPUSD";

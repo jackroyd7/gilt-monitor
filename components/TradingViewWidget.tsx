@@ -25,11 +25,17 @@ export default function TradingViewWidget({
   widget,
   config,
   height,
+  chartPath,
 }: {
-  /** Script name after "embed-widget-", e.g. "ticker-tape", "market-overview", "advanced-chart". */
+  /** Script name after "embed-widget-", e.g. "ticker-tape", "market-quotes", "advanced-chart". */
   widget: string;
   config: Record<string, unknown>;
-  height: number;
+  height: number | string;
+  /**
+   * A page on this site that clicks on a symbol should open, instead of tradingview.com.
+   * TradingView appends ?tvwidgetsymbol=EXCHANGE:TICKER to it.
+   */
+  chartPath?: string;
 }) {
   const ref = useRef<HTMLDivElement>(null);
   const dark = useDarkMode();
@@ -49,12 +55,14 @@ export default function TradingViewWidget({
       theme: dark ? "dark" : "light",
       isTransparent: true,
       locale: "en",
+      // The widget runs in TradingView's iframe, so the link must be absolute.
+      ...(chartPath ? { largeChartUrl: `${window.location.origin}${chartPath}` } : {}),
     });
     host.appendChild(script);
     return () => {
       host.innerHTML = "";
     };
-  }, [widget, configJson, dark]);
+  }, [widget, configJson, dark, chartPath]);
 
   return <div ref={ref} className="tradingview-widget-container w-full" style={{ height }} />;
 }
