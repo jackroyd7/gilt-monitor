@@ -17,6 +17,7 @@ import {
 import { closeDate, giltSeries, recordCloses, yieldChanges, emptyHistory, previousBusinessDays, withLatestCloses, repeatsPreviousClose } from "./history";
 import { normaliseYieldUnits, parseBondRow, parsePriceRow, withLive } from "./live-parse";
 import { giltRows } from "./analytics";
+import { addCard, defaultLayout, moveCard, removeCard, sanitizeLayout } from "./market-layout";
 import { articleText, decodeGoogleNewsId, extractArticle, isFetchableUrl, isPaywalled, parseBatchExecute } from "./article";
 import { googleNewsUrl, isMuted, mergeItems, parseFeed, scoreItems } from "./news";
 import type { CurveSet } from "./types";
@@ -364,4 +365,23 @@ test("article reader: extraction, paywalls, address checks, Google News links", 
   const reply = `)]}'\n\n123\n[["wrb.fr","Fbv4je","[\\"garturlres\\",\\"https://www.reuters.com/markets/gilts-1\\",1]",null,null,null,"generic"]]\n`;
   assert.equal(parseBatchExecute(reply), "https://www.reuters.com/markets/gilts-1");
   assert.equal(parseBatchExecute("garbage"), null);
+});
+
+test("markets layout: move, add, remove, and sanitising a saved layout", () => {
+  const list = [{ symbol: "A:1", name: "a" }, { symbol: "B:2", name: "b" }, { symbol: "C:3", name: "c" }];
+  assert.deepEqual(moveCard(list, 0, 2).map((c) => c.symbol), ["B:2", "C:3", "A:1"]);
+  assert.deepEqual(moveCard(list, 2, 0).map((c) => c.symbol), ["C:3", "A:1", "B:2"]);
+  assert.equal(moveCard(list, 1, 1), list);
+  assert.equal(addCard(list, { symbol: "a:1", name: "dup" }).length, 3);
+  assert.equal(addCard(list, { symbol: "not a symbol", name: "x" }).length, 3);
+  assert.deepEqual(addCard(list, { symbol: " tvc:gold ", name: "" }).at(-1), { symbol: "TVC:GOLD", name: "TVC:GOLD" });
+  assert.deepEqual(removeCard(list, "B:2").map((c) => c.symbol), ["A:1", "C:3"]);
+
+  const defaults = defaultLayout();
+  const firstGroup = Object.keys(defaults)[0];
+  const saved = sanitizeLayout({ [firstGroup]: [{ symbol: "FX:GBPUSD", name: "Cable" }, { symbol: "<script>", name: "x" }, 5], Unknown: [] })!;
+  assert.deepEqual(saved[firstGroup], [{ symbol: "FX:GBPUSD", name: "Cable" }]);
+  assert.deepEqual(Object.keys(saved), Object.keys(defaults));
+  assert.equal(sanitizeLayout("nonsense"), null);
+  assert.equal(sanitizeLayout({ Unknown: [] }), null);
 });
