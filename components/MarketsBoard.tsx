@@ -7,14 +7,15 @@ import Modal from "./Modal";
 import TradingViewWidget from "./TradingViewWidget";
 
 // Clicks inside TradingView's widgets can't be intercepted (they run in TradingView's
-// iframe), so the widgets link back to /markets?tvwidgetsymbol=... and this page opens
-// the chart popup for that symbol. The name buttons under each strip open it directly.
+// iframe), so the ticker tape links back to /markets?tvwidgetsymbol=... and this page
+// opens the chart popup for that symbol. Each benchmark card has a transparent button
+// over it that opens the popup directly.
 const CHART_PATH = "/markets";
 
 export default function MarketsBoard({ initialSymbol }: { initialSymbol?: string }) {
   const router = useRouter();
   const [symbol, setSymbol] = useState<string | null>(initialSymbol ?? null);
-  const watchlist = MARKET_GROUPS.flatMap((g) => g.symbols.map((s) => s.symbol));
+  const watchlist = MARKET_GROUPS.flatMap((g) => [...g.symbols, ...g.more].map((s) => s.symbol));
   // A tall chart: most of the window height (popup header and padding take ~140px),
   // with a sensible floor on small screens.
   const [chartHeight, setChartHeight] = useState(640);
@@ -43,25 +44,38 @@ export default function MarketsBoard({ initialSymbol }: { initialSymbol?: string
       <div className="space-y-4">
         {MARKET_GROUPS.map((g) => (
           <section key={g.title} className="card p-4">
-            <h2 className="text-sm font-semibold text-ink">{g.title}</h2>
-            <div className="mt-2 -mx-1">
-              <TradingViewWidget
-                widget="tickers"
-                height={84}
-                chartPath={CHART_PATH}
-                config={{ symbols: g.symbols.map((s) => ({ proName: s.symbol, title: s.name })), showSymbolLogo: false }}
-              />
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <h2 className="text-sm font-semibold text-ink">{g.title}</h2>
+              <select
+                value=""
+                onChange={(e) => e.target.value && setSymbol(e.target.value)}
+                aria-label={`More ${g.title.toLowerCase()}`}
+                className="rounded-md border border-line bg-surface px-2 py-1 text-xs text-ink-2"
+              >
+                <option value="">More…</option>
+                {g.more.map((s) => (
+                  <option key={s.symbol} value={s.symbol}>
+                    {s.name}
+                  </option>
+                ))}
+              </select>
             </div>
-            <div className="mt-2 flex flex-wrap items-center gap-1.5 text-xs">
-              <span className="text-muted">Chart:</span>
+            <div className="mt-3 grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-4">
               {g.symbols.map((s) => (
-                <button
-                  key={s.symbol}
-                  onClick={() => setSymbol(s.symbol)}
-                  className="rounded-full border border-line px-2.5 py-0.5 text-ink-2 hover:bg-surface-2 hover:text-ink"
-                >
-                  {s.name}
-                </button>
+                <div key={s.symbol} className="relative overflow-hidden rounded-lg border border-line bg-surface-2/40">
+                  <TradingViewWidget
+                    widget="tickers"
+                    height={78}
+                    config={{ symbols: [{ proName: s.symbol, title: s.name }], showSymbolLogo: false }}
+                  />
+                  {/* The quote is drawn in TradingView's iframe; this layer makes the whole card open our chart popup. */}
+                  <button
+                    onClick={() => setSymbol(s.symbol)}
+                    aria-label={`Open ${s.name} chart`}
+                    title={`${s.name}: open chart`}
+                    className="absolute inset-0 cursor-pointer rounded-lg hover:bg-[color:var(--ink)]/[0.04] focus-visible:outline-2 focus-visible:outline-[color:var(--accent)]"
+                  />
+                </div>
               ))}
             </div>
           </section>

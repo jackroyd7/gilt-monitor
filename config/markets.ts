@@ -20,8 +20,9 @@ export const TICKER_TAPE: MarketSymbol[] = [
   { symbol: "TVC:GOLD", name: "Gold" },
 ];
 
-// Benchmarks for each asset class on the Markets tab; clicking one opens its chart popup.
-export const MARKET_GROUPS: { title: string; symbols: MarketSymbol[] }[] = [
+// Benchmarks for each asset class on the Markets tab (one card each); clicking one opens
+// its chart popup. "more" fills the asset class's "More…" dropdown.
+export const MARKET_GROUPS: { title: string; symbols: MarketSymbol[]; more: MarketSymbol[] }[] = [
   {
     title: "Equity indices",
     symbols: [
@@ -32,6 +33,14 @@ export const MARKET_GROUPS: { title: string; symbols: MarketSymbol[] }[] = [
       { symbol: "FOREXCOM:EUSTX50", name: "Euro Stoxx 50" },
       { symbol: "FOREXCOM:GRXEUR", name: "DAX" },
       { symbol: "FOREXCOM:JP225", name: "Nikkei 225" },
+    ],
+    more: [
+      { symbol: "FOREXCOM:DJI", name: "Dow Jones" },
+      { symbol: "FOREXCOM:FRXEUR", name: "CAC 40" },
+      { symbol: "FOREXCOM:ESXEUR", name: "IBEX 35" },
+      { symbol: "FOREXCOM:HKXHKD", name: "Hang Seng" },
+      { symbol: "FOREXCOM:AUXAUD", name: "ASX 200" },
+      { symbol: "TVC:VIX", name: "VIX (US volatility)" },
     ],
   },
   {
@@ -44,6 +53,19 @@ export const MARKET_GROUPS: { title: string; symbols: MarketSymbol[] }[] = [
       { symbol: "FX:USDJPY", name: "USD/JPY" },
       { symbol: "TVC:DXY", name: "US dollar index" },
     ],
+    more: [
+      { symbol: "FX:GBPCHF", name: "GBP/CHF" },
+      { symbol: "FX:GBPAUD", name: "GBP/AUD" },
+      { symbol: "FX:GBPCAD", name: "GBP/CAD" },
+      { symbol: "FX:AUDUSD", name: "AUD/USD" },
+      { symbol: "FX:USDCHF", name: "USD/CHF" },
+      { symbol: "FX:USDCAD", name: "USD/CAD" },
+      { symbol: "FX:NZDUSD", name: "NZD/USD" },
+      { symbol: "FX:EURJPY", name: "EUR/JPY" },
+      { symbol: "FX:EURCHF", name: "EUR/CHF" },
+      { symbol: "FX:USDCNH", name: "USD/CNH" },
+      { symbol: "FX:USDMXN", name: "USD/MXN" },
+    ],
   },
   {
     title: "Commodities",
@@ -55,12 +77,22 @@ export const MARKET_GROUPS: { title: string; symbols: MarketSymbol[] }[] = [
       { symbol: "TVC:SILVER", name: "Silver" },
       { symbol: "CAPITALCOM:COPPER", name: "Copper" },
     ],
+    more: [
+      { symbol: "TVC:PLATINUM", name: "Platinum" },
+      { symbol: "TVC:PALLADIUM", name: "Palladium" },
+      { symbol: "CAPITALCOM:ALUMINUM", name: "Aluminium" },
+      { symbol: "CAPITALCOM:WHEAT", name: "Wheat" },
+      { symbol: "CAPITALCOM:CORN", name: "Corn" },
+      { symbol: "CAPITALCOM:SOYBEANS", name: "Soybeans" },
+      { symbol: "CAPITALCOM:COFFEEARABICA", name: "Coffee" },
+      { symbol: "CAPITALCOM:SUGAR", name: "Sugar" },
+    ],
   },
 ];
 
 /** Friendly name for a symbol, if it's one of ours. */
 export const symbolName = (symbol: string) =>
-  [...MARKET_GROUPS.flatMap((g) => g.symbols), ...TICKER_TAPE].find((s) => s.symbol === symbol)?.name;
+  [...MARKET_GROUPS.flatMap((g) => [...g.symbols, ...g.more]), ...TICKER_TAPE].find((s) => s.symbol === symbol)?.name;
 
 /** Fallback symbol for the chart popup. */
 export const DEFAULT_CHART_SYMBOL = "FX:GBPUSD";

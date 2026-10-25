@@ -11,7 +11,7 @@ export default async function MarketsPage({ searchParams }: PageProps<"/markets"
     <>
       <PageHeader title="Markets">
         Benchmark equity indices, FX spot rates and commodities from TradingView&apos;s embeddable widgets (some prices
-        are delayed, depending on the exchange). Click any instrument for its chart. Symbols are set in{" "}
+        are delayed, depending on the exchange). Click any card, or pick from “More…”, for a chart. Symbols are set in{" "}
         <code>config/markets.ts</code>.
       </PageHeader>
       <MarketsBoard initialSymbol={symbol} />
