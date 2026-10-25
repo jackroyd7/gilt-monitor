@@ -67,7 +67,7 @@ export default function ArticleModal({ item, topicLabel, onClose }: { item: News
               disabled={summary.loading}
               className="rounded-md border border-line px-3 py-1.5 text-sm text-ink hover:bg-surface-2 disabled:opacity-60"
             >
-              {summary.loading ? "Summarising…" : "Summarise for gilts"}
+              {summary.loading ? "Analysing…" : "Market impact"}
             </button>
           )}
           {ok && <span className="ml-auto text-xs text-muted">Reader view · {ok.words.toLocaleString("en-GB")} words</span>}
@@ -85,7 +85,7 @@ export default function ArticleModal({ item, topicLabel, onClose }: { item: News
       )}
       {(summary.text || summary.error) && (
         <div className="mb-4 rounded-md border border-line bg-surface-2 px-4 py-3 text-sm">
-          <div className="mb-1 text-xs font-semibold text-ink-2">AI summary</div>
+          <div className="mb-1 text-xs font-semibold text-ink-2">Market impact (AI analysis)</div>
           {summary.error ? (
             <p style={{ color: "var(--critical)" }}>{summary.error}</p>
           ) : (

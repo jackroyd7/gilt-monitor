@@ -111,11 +111,12 @@ export async function getArticle(item: NewsItem): Promise<ArticleResult> {
 
 export const summariesEnabled = () => Boolean(process.env.ANTHROPIC_API_KEY) && process.env.NEWS_SUMMARIES !== "off";
 
-const SYSTEM = `You summarise news articles for a UK gilt investor who also follows UK rates, sterling, global bonds, commodities and equities.
-Write in British English, plainly, without hype. Use only what the article says; if it doesn't say something, don't infer it.
+const SYSTEM = `You read news articles for a UK-based investor who follows gilts and UK rates, sterling and other FX, global government bonds, equities and commodities, and you explain which markets the news matters for and why.
+Write in British English, plainly, without hype. Take facts only from the article; your market reasoning is your own analysis, so keep it measured and say when an effect is uncertain or depends on how things develop.
 Format:
-- 3 to 5 short bullet points with the key facts and numbers.
-- Then one line starting "Why it matters for gilts:" giving the implication for UK government bond yields or the UK rates outlook, or saying it has little direct relevance.`;
+- First line: "In short:" and one sentence on what happened.
+- Then "Markets affected:" followed by one bullet per market, most affected first, each as "<market>: <why it matters, and the likely direction if the article gives grounds for one>". Be specific (e.g. "Short-dated gilts", "GBP/USD", "FTSE 100 miners", "Brent crude") rather than generic.
+- Include only markets with a real link to the story, usually one to four. If the story has no meaningful market impact, say so in a single line instead of listing markets.`;
 
 export async function summarise(item: NewsItem, article: Extract<ArticleResult, { status: "ok" }>): Promise<string> {
   const cached = store.summaries.get(item.id);
