@@ -47,6 +47,7 @@ export const MARKET_GROUPS: { title: string; symbols: MarketSymbol[]; more: Mark
     title: "FX spot",
     symbols: [
       { symbol: "FX:GBPUSD", name: "GBP/USD" },
+      { symbol: "FX_IDC:GBPEUR", name: "GBP/EUR" },
       { symbol: "FX:EURGBP", name: "EUR/GBP" },
       { symbol: "FX:GBPJPY", name: "GBP/JPY" },
       { symbol: "FX:EURUSD", name: "EUR/USD" },

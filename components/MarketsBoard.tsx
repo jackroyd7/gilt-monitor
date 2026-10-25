@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { DEFAULT_CHART_SYMBOL, MARKET_GROUPS, TICKER_TAPE, symbolName, type MarketSymbol } from "@/config/markets";
 import { addCard, defaultLayout, isSymbol, moveCard, removeCard, sanitizeLayout, type MarketLayout } from "@/lib/market-layout";
 import Modal from "./Modal";
@@ -122,27 +122,66 @@ export default function MarketsBoard({ initialSymbol }: { initialSymbol?: string
   const [editing, setEditing] = useState(false);
   const [dragging, setDragging] = useState<{ group: string; index: number } | null>(null);
 
-  // The layout is a per-browser preference, read once after the page loads.
+  // Where the layout is kept: on the server (shared by all your devices) when preference
+  // storage is set up, otherwise in this browser. The browser copy is also a fast cache.
+  const [sync, setSync] = useState<"checking" | "synced" | "local" | "error">("checking");
+  const serverOn = useRef(false);
+  const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const saveLocal = (value: MarketLayout | null) => {
+    try {
+      if (value) localStorage.setItem(LAYOUT_KEY, JSON.stringify(value));
+      else localStorage.removeItem(LAYOUT_KEY);
+    } catch {}
+  };
+  // Edits arrive in bursts (dragging, several removals), so save to the server shortly after the last one.
+  const saveServer = (value: MarketLayout | null) => {
+    if (!serverOn.current) return;
+    if (saveTimer.current) clearTimeout(saveTimer.current);
+    saveTimer.current = setTimeout(() => {
+      fetch("/api/prefs/markets-layout", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(value) })
+        .then((r) => setSync(r.ok ? "synced" : "error"))
+        .catch(() => setSync("error"));
+    }, 600);
+  };
+
   useEffect(() => {
+    let local: MarketLayout | null = null;
     try {
-      const saved = sanitizeLayout(JSON.parse(localStorage.getItem(LAYOUT_KEY) ?? "null"));
-      // eslint-disable-next-line react-hooks/set-state-in-effect -- one-off read of a saved preference
-      if (saved) setLayout(saved);
+      local = sanitizeLayout(JSON.parse(localStorage.getItem(LAYOUT_KEY) ?? "null"));
     } catch {}
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- show the cached layout while the server copy loads
+    if (local) setLayout(local);
+    fetch("/api/prefs/markets-layout")
+      .then((r) => r.json())
+      .then((d: { synced: boolean; layout: MarketLayout | null }) => {
+        if (!d.synced) return setSync("local");
+        serverOn.current = true;
+        setSync("synced");
+        if (d.layout) {
+          setLayout(d.layout);
+          saveLocal(d.layout);
+        } else if (local) {
+          // First device to connect: upload the layout already set up in this browser.
+          saveServer(local);
+        }
+      })
+      .catch(() => setSync("local"));
   }, []);
-  const update = (group: string, fn: (list: MarketSymbol[]) => MarketSymbol[]) =>
-    setLayout((prev) => {
-      const next = { ...prev, [group]: fn(prev[group] ?? []) };
-      try {
-        localStorage.setItem(LAYOUT_KEY, JSON.stringify(next));
-      } catch {}
-      return next;
-    });
+
+  const update = (group: string, fn: (list: MarketSymbol[]) => MarketSymbol[]) => {
+    const next = { ...layout, [group]: fn(layout[group] ?? []) };
+    setLayout(next);
+    saveLocal(next);
+    saveServer(next);
+  };
   const reset = () => {
-    try {
-      localStorage.removeItem(LAYOUT_KEY);
-    } catch {}
-    setLayout(defaultLayout());
+    // Save the defaults explicitly (not a delete), so other devices adopt them rather than
+    // re-uploading their own cached layout as if nothing had been stored yet.
+    const defaults = defaultLayout();
+    setLayout(defaults);
+    saveLocal(defaults);
+    saveServer(defaults);
   };
 
   const onPick = (group: string, value: string) => {
@@ -194,7 +233,14 @@ export default function MarketsBoard({ initialSymbol }: { initialSymbol?: string
         <div className="flex flex-wrap items-center justify-end gap-2 text-xs">
           {editing && (
             <span className="mr-auto text-muted">
-              Drag cards (or use ← →) to reorder, ✕ to remove, and “Add…” to add. Saved in this browser.
+              Drag cards (or use ← →) to reorder, ✕ to remove, and “Add…” to add.{" "}
+              {sync === "synced"
+                ? "Changes sync to all your devices."
+                : sync === "error"
+                  ? "Couldn't reach sync storage; saved in this browser for now."
+                  : sync === "local"
+                    ? "Saved in this browser only (connect storage in Vercel to sync devices)."
+                    : ""}
             </span>
           )}
           {editing && (
