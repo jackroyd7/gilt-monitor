@@ -17,6 +17,7 @@
     "@mozilla/readability": "^0.6.0",
     "fast-xml-parser": "^5.11.2",
     "fflate": "^0.8.3",
+    "html-to-image": "^1.11.13",
     "linkedom": "^0.18.14",
     "next": "^16.3.5",
     "react": "^19.2.8",

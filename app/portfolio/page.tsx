@@ -70,7 +70,7 @@ export default async function PortfolioPage({ searchParams }: PageProps<"/portfo
     return (
       <>
         <PageHeader title="Portfolio">Connect your giltsyield.com account to see your holdings here.</PageHeader>
-        <Card title="Setup">
+        <Card title="Setup" exportable={false}>
           <ol className="list-decimal space-y-1 pl-5 text-sm text-ink-2">
             <li>Log in to giltsyield.com, open your Profile and copy your API key.</li>
             <li>
@@ -89,7 +89,7 @@ export default async function PortfolioPage({ searchParams }: PageProps<"/portfo
     return (
       <>
         <PageHeader title="Portfolio" />
-        <Card title="Couldn’t reach giltsyield.com">
+        <Card title="Couldn’t reach giltsyield.com" exportable={false}>
           <p className="text-sm text-ink-2">{list.error}</p>
         </Card>
       </>

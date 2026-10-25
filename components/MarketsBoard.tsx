@@ -3,8 +3,10 @@
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { DEFAULT_CHART_SYMBOL, MARKET_GROUPS, TICKER_TAPE, symbolName, type MarketSymbol } from "@/config/markets";
-import { addCard, defaultLayout, isSymbol, moveCard, removeCard, sanitizeLayout, type MarketLayout } from "@/lib/market-layout";
+import { addCard, defaultLayout, layoutForStorage, moveCard, removeCard, sanitizeLayout, type MarketLayout } from "@/lib/market-layout";
 import Modal from "./Modal";
+import SymbolPicker from "./SymbolPicker";
+import { SYMBOL_CATALOGUE } from "@/config/symbol-catalogue";
 import TradingViewWidget from "./TradingViewWidget";
 
 // Clicks inside TradingView's widgets can't be intercepted (they run in TradingView's
@@ -121,6 +123,7 @@ export default function MarketsBoard({ initialSymbol }: { initialSymbol?: string
   const [layout, setLayout] = useState<MarketLayout>(defaultLayout);
   const [editing, setEditing] = useState(false);
   const [dragging, setDragging] = useState<{ group: string; index: number } | null>(null);
+  const [picking, setPicking] = useState<string | null>(null); // asset class the search was opened from
 
   // Where the layout is kept: on the server (shared by all your devices) when preference
   // storage is set up, otherwise in this browser. The browser copy is also a fast cache.
@@ -130,7 +133,7 @@ export default function MarketsBoard({ initialSymbol }: { initialSymbol?: string
 
   const saveLocal = (value: MarketLayout | null) => {
     try {
-      if (value) localStorage.setItem(LAYOUT_KEY, JSON.stringify(value));
+      if (value) localStorage.setItem(LAYOUT_KEY, JSON.stringify(layoutForStorage(value)));
       else localStorage.removeItem(LAYOUT_KEY);
     } catch {}
   };
@@ -139,7 +142,7 @@ export default function MarketsBoard({ initialSymbol }: { initialSymbol?: string
     if (!serverOn.current) return;
     if (saveTimer.current) clearTimeout(saveTimer.current);
     saveTimer.current = setTimeout(() => {
-      fetch("/api/prefs/markets-layout", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(value) })
+      fetch("/api/prefs/markets-layout", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(value && layoutForStorage(value)) })
         .then((r) => setSync(r.ok ? "synced" : "error"))
         .catch(() => setSync("error"));
     }, 600);
@@ -187,15 +190,7 @@ export default function MarketsBoard({ initialSymbol }: { initialSymbol?: string
   const onPick = (group: string, value: string) => {
     if (!value) return;
     if (value === CUSTOM) {
-      const sym = window.prompt("TradingView symbol (EXCHANGE:TICKER, e.g. FX:AUDJPY or TVC:GB02Y):")?.trim();
-      if (!sym) return;
-      if (!isSymbol(sym)) {
-        window.alert("That doesn't look like a TradingView symbol. Use the form EXCHANGE:TICKER.");
-        return;
-      }
-      const name = window.prompt("Name to show on the card:", sym.split(":")[1])?.trim() || sym;
-      if (editing) update(group, (l) => addCard(l, { symbol: sym, name }));
-      else setSymbol(sym.toUpperCase());
+      setPicking(group);
       return;
     }
     if (editing) {
@@ -276,7 +271,7 @@ export default function MarketsBoard({ initialSymbol }: { initialSymbol?: string
                       {s.name}
                     </option>
                   ))}
-                  <option value={CUSTOM}>{editing ? "Other TradingView symbol…" : "Chart any TradingView symbol…"}</option>
+                  <option value={CUSTOM}>{editing ? "Search for another…" : "Search any instrument…"}</option>
                 </select>
               </div>
               {cards.length ? (
@@ -308,8 +303,24 @@ export default function MarketsBoard({ initialSymbol }: { initialSymbol?: string
           );
         })}
       </div>
+      {picking && (
+        <SymbolPicker
+          title={editing ? `Add a card to ${picking}` : "Chart any instrument"}
+          onClose={() => setPicking(null)}
+          onPick={(s) => {
+            if (editing) update(picking, (l) => addCard(l, s));
+            else setSymbol(s.symbol);
+            setPicking(null);
+          }}
+        />
+      )}
       {symbol && (
-        <Modal size="full" title={Object.values(layout).flat().find((c) => c.symbol === symbol)?.name ?? symbolName(symbol) ?? symbol} subtitle={`${symbol} · switch to candles, change interval or add indicators from the chart toolbar`} onClose={close}>
+        <Modal size="full" title={
+            Object.values(layout).flat().find((c) => c.symbol === symbol)?.name ??
+            symbolName(symbol) ??
+            SYMBOL_CATALOGUE.find((c) => c.symbol === symbol)?.name ??
+            symbol
+          } subtitle={`${symbol} · switch to candles, change interval or add indicators from the chart toolbar`} onClose={close}>
           <TradingViewWidget
             key={symbol}
             widget="advanced-chart"

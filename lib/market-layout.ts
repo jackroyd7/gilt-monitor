@@ -5,6 +5,35 @@ import { MARKET_GROUPS, type MarketSymbol } from "@/config/markets";
 
 export type MarketLayout = Record<string, MarketSymbol[]>;
 
+/**
+ * Default cards added after layouts could be saved. A saved layout older than `version`
+ * gets the card inserted where it sits in the defaults; once saved at the newer version,
+ * removing the card sticks. Bump LAYOUT_VERSION when adding an entry.
+ */
+export const LAYOUT_VERSION = 2;
+const ADDED_DEFAULTS: { version: number; group: string; symbol: string }[] = [
+  { version: 2, group: "FX spot", symbol: "FX_IDC:GBPEUR" },
+];
+
+function upgrade(layout: MarketLayout, fromVersion: number): MarketLayout {
+  const out = { ...layout };
+  for (const a of ADDED_DEFAULTS) {
+    if (a.version <= fromVersion) continue;
+    const g = MARKET_GROUPS.find((x) => x.title === a.group);
+    const card = g?.symbols.find((s) => s.symbol === a.symbol);
+    const list = out[a.group];
+    if (!g || !card || !list || list.some((c) => c.symbol === a.symbol)) continue;
+    // Insert after the card that precedes it in the defaults, if that card is present.
+    const before = g.symbols[g.symbols.findIndex((s) => s.symbol === a.symbol) - 1];
+    const at = before ? list.findIndex((c) => c.symbol === before.symbol) + 1 : 0;
+    out[a.group] = [...list.slice(0, at), { ...card }, ...list.slice(at)];
+  }
+  return out;
+}
+
+/** What gets stored: the layout plus the version it was saved at. */
+export const layoutForStorage = (layout: MarketLayout) => ({ ...layout, _v: LAYOUT_VERSION });
+
 export const defaultLayout = (): MarketLayout =>
   Object.fromEntries(MARKET_GROUPS.map((g) => [g.title, g.symbols.map((s) => ({ ...s }))]));
 
@@ -42,5 +71,7 @@ export function sanitizeLayout(saved: unknown): MarketLayout | null {
       [],
     );
   }
-  return any ? out : null;
+  if (!any) return null;
+  const v = (saved as { _v?: unknown })._v;
+  return upgrade(out, typeof v === "number" ? v : 1);
 }

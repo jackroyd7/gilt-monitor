@@ -33,6 +33,9 @@ const fmtVal = (v: number, unit: Unit) =>
 const fmtTenor = (t: number) => (t < 1 ? `${Math.round(t * 12)}m` : `${+t.toFixed(1)}y`);
 const fmtDate = (ms: number) =>
   new Date(ms).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "2-digit", timeZone: "UTC" });
+/** Axis label style, set on the SVG text itself so exported images match the screen. */
+const AXIS_TICK = { fontSize: 11 };
+
 const toX = (x: number | string) => (typeof x === "string" ? Date.parse(x + "T00:00:00Z") : x);
 
 export const RANGES = [
@@ -47,7 +50,7 @@ export const RANGES = [
 /** Date-range buttons; used inside SeriesChart, or once above several charts sharing a range. */
 export function RangePicker({ value, onChange }: { value: string; onChange: (key: string) => void }) {
   return (
-    <div className="flex gap-0.5 rounded-md bg-surface-2 p-0.5 text-xs">
+    <div data-export-ignore className="flex gap-0.5 rounded-md bg-surface-2 p-0.5 text-xs">
       {RANGES.map((r) => (
         <button
           key={r.key}
@@ -165,9 +168,9 @@ export function SeriesChart({
           <div className="flex h-full items-center justify-center text-sm text-muted">No data for this view yet</div>
         ) : (
           <ResponsiveContainer width="100%" height="100%">
-            <LineChart data={data} margin={{ top: 8, right: 12, bottom: 0, left: 0 }}>
+            <LineChart data={data} margin={{ top: 8, right: 28, bottom: 0, left: 0 }}>
               <CartesianGrid vertical={false} strokeWidth={1} />
-              <XAxis
+              <XAxis tick={AXIS_TICK}
                 dataKey="x"
                 type="number"
                 scale={xKind === "tenor" ? "sqrt" : "linear"}
@@ -176,7 +179,7 @@ export function SeriesChart({
                 ticks={xKind === "tenor" ? [1, 2, 5, 10, 20, 30, 40].filter((t) => t <= data[data.length - 1].x) : undefined}
                 minTickGap={24}
               />
-              <YAxis
+              <YAxis tick={AXIS_TICK}
                 width={48}
                 domain={["auto", "auto"]}
                 tickFormatter={(v: number) => (unit === "bp" ? v.toFixed(0) : unit === "pct" ? v.toFixed(2) : v.toFixed(1))}
@@ -282,10 +285,10 @@ export function GiltScatter({
       <Legend series={legend} />
       <div style={{ height }}>
         <ResponsiveContainer width="100%" height="100%">
-          <ComposedChart margin={{ top: 8, right: 12, bottom: 0, left: 0 }}>
+          <ComposedChart margin={{ top: 8, right: 28, bottom: 0, left: 0 }}>
             <CartesianGrid vertical={false} />
-            <XAxis dataKey="t" type="number" domain={[0, "dataMax"]} tickFormatter={fmtTenor} allowDuplicatedCategory={false} />
-            <YAxis
+            <XAxis tick={AXIS_TICK} dataKey="t" type="number" domain={[0, "dataMax"]} tickFormatter={fmtTenor} allowDuplicatedCategory={false} />
+            <YAxis tick={AXIS_TICK}
               dataKey="y"
               width={48}
               domain={["auto", "auto"]}
@@ -350,10 +353,10 @@ export function MonthlyBars({ data, height = 240 }: { data: { month: string; amo
   return (
     <div style={{ height }}>
       <ResponsiveContainer width="100%" height="100%">
-        <BarChart data={data} margin={{ top: 8, right: 12, bottom: 0, left: 0 }} barCategoryGap={2}>
+        <BarChart data={data} margin={{ top: 8, right: 28, bottom: 0, left: 0 }} barCategoryGap={2}>
           <CartesianGrid vertical={false} />
-          <XAxis dataKey="month" minTickGap={16} />
-          <YAxis width={56} tickFormatter={(v: number) => (Math.abs(v) >= 1000 ? `${(v / 1000).toFixed(0)}k` : v.toFixed(0))} />
+          <XAxis tick={AXIS_TICK} dataKey="month" minTickGap={16} />
+          <YAxis tick={AXIS_TICK} width={56} tickFormatter={(v: number) => (Math.abs(v) >= 1000 ? `${(v / 1000).toFixed(0)}k` : v.toFixed(0))} />
           <Tooltip
             cursor={{ fill: "var(--surface-2)" }}
             content={({ active, payload, label }) =>

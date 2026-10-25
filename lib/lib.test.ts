@@ -17,7 +17,9 @@ import {
 import { closeDate, giltSeries, recordCloses, yieldChanges, emptyHistory, previousBusinessDays, withLatestCloses, repeatsPreviousClose } from "./history";
 import { normaliseYieldUnits, parseBondRow, parsePriceRow, withLive } from "./live-parse";
 import { giltRows } from "./analytics";
-import { addCard, defaultLayout, moveCard, removeCard, sanitizeLayout } from "./market-layout";
+import { searchSymbols } from "./symbol-search";
+import { SYMBOL_CATALOGUE } from "../config/symbol-catalogue";
+import { addCard, defaultLayout, LAYOUT_VERSION, layoutForStorage, moveCard, removeCard, sanitizeLayout } from "./market-layout";
 import { articleText, decodeGoogleNewsId, extractArticle, isFetchableUrl, isPaywalled, parseBatchExecute } from "./article";
 import { googleNewsUrl, isMuted, mergeItems, parseFeed, scoreItems } from "./news";
 import type { CurveSet } from "./types";
@@ -384,4 +386,41 @@ test("markets layout: move, add, remove, and sanitising a saved layout", () => {
   assert.deepEqual(Object.keys(saved), Object.keys(defaults));
   assert.equal(sanitizeLayout("nonsense"), null);
   assert.equal(sanitizeLayout({ Unknown: [] }), null);
+});
+
+test("symbol search: aliases, prefixes, FX pairs, typed symbols, and a short list", () => {
+  const top = (q: string) => searchSymbols(q, SYMBOL_CATALOGUE).map((r) => r.symbol);
+  assert.equal(top("cable")[0], "FX:GBPUSD");
+  assert.equal(top("brent")[0], "TVC:UKOIL");
+  assert.equal(top("bund 10")[0], "TVC:DE10Y");
+  assert.equal(top("gilt 30")[0], "TVC:GB30Y");
+  assert.equal(top("footsie")[0], "FOREXCOM:UKXGBP");
+  assert.equal(top("audnzd")[0], "FX_IDC:AUDNZD");
+  assert.equal(top("GBP/USD")[0], "FX:GBPUSD"); // known pair isn't duplicated via FX_IDC
+  assert.equal(top("nyse:ibm")[0], "NYSE:IBM");
+  assert.ok(top("yield").length <= 8 && top("yield").length > 0);
+  assert.deepEqual(top("   "), []);
+  assert.deepEqual(top("zzzzqqq"), []);
+});
+
+test("markets layout: new default cards appear in older saved layouts, but removals stick", () => {
+  const fxOld = [{ symbol: "FX:GBPUSD", name: "GBP/USD" }, { symbol: "FX:EURUSD", name: "EUR/USD" }];
+  const old = sanitizeLayout({ "FX spot": fxOld })!; // saved before versioning
+  assert.deepEqual(old["FX spot"].map((c) => c.symbol), ["FX:GBPUSD", "FX_IDC:GBPEUR", "FX:EURUSD"]);
+  const current = sanitizeLayout({ "FX spot": fxOld, _v: LAYOUT_VERSION })!; // user removed it after the upgrade
+  assert.deepEqual(current["FX spot"].map((c) => c.symbol), ["FX:GBPUSD", "FX:EURUSD"]);
+  assert.equal(layoutForStorage(current)._v, LAYOUT_VERSION);
+});
+
+test("symbol search finds stocks without crowding out market benchmarks", () => {
+  const top = (q: string) => searchSymbols(q, SYMBOL_CATALOGUE).map((r) => r.symbol);
+  assert.equal(top("shell")[0], "LSE:SHEL");
+  assert.equal(top("sap")[0], "XETR:SAP");
+  assert.equal(top("lvmh")[0], "EURONEXT:MC");
+  assert.equal(top("apple")[0], "NASDAQ:AAPL");
+  assert.equal(top("barclays")[0], "LSE:BARC");
+  assert.equal(top("gold")[0], "TVC:GOLD");
+  assert.equal(top("oil")[0], "TVC:UKOIL");
+  const banks = top("bank");
+  assert.ok(banks.length > 0 && banks.length <= 8 && banks.includes("NYSE:BAC"));
 });

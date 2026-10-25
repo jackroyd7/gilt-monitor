@@ -22,23 +22,30 @@ export default function Modal({
   size?: "full";
 }) {
   const panel = useRef<HTMLDivElement>(null);
+  // Callers often pass a new onClose function each render; keep the latest without
+  // re-running the open/close effect (which would steal focus on every render).
+  const closeRef = useRef(onClose);
+  useEffect(() => {
+    closeRef.current = onClose;
+  }, [onClose]);
 
   useEffect(() => {
-    const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && closeRef.current();
     document.addEventListener("keydown", onKey);
     const overflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
-    panel.current?.focus();
+    // Focus the dialog for keyboard use, unless something inside it (e.g. a search box) took focus.
+    if (!panel.current?.contains(document.activeElement)) panel.current?.focus();
     return () => {
       document.removeEventListener("keydown", onKey);
       document.body.style.overflow = overflow;
     };
-  }, [onClose]);
+  }, []);
 
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-2 sm:p-6"
-      onMouseDown={(e) => e.target === e.currentTarget && onClose()}
+      onMouseDown={(e) => e.target === e.currentTarget && closeRef.current()}
     >
       <div
         ref={panel}

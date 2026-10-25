@@ -2,6 +2,7 @@
 
 import { useMemo, useRef, useState } from "react";
 import { GiltScatter, RangePicker, SeriesChart, type Series } from "./charts";
+import ExportButtons from "./ExportButtons";
 
 export interface MonitorRow {
   isin: string;
@@ -163,8 +164,14 @@ export default function GiltMonitor({
 
   return (
     <div className="space-y-4">
-      <section className="card p-4">
-        <div className="flex flex-wrap items-center gap-2 text-xs">
+      <section className="card p-4" data-export-card>
+        <div className="mb-2 flex items-start justify-between gap-3">
+          <h2 className="text-sm font-semibold text-ink">
+            {scatterType === "index-linked" ? "Index-linked gilts" : "Conventional gilts"}: {plot === "yield" ? "yield" : "ASW"} by maturity
+          </h2>
+          <ExportButtons />
+        </div>
+        <div data-export-ignore className="flex flex-wrap items-center gap-2 text-xs">
           {(
             [
               ["conventional", "Conventionals"],
@@ -188,7 +195,7 @@ export default function GiltMonitor({
             className="ml-auto w-48 rounded-md border border-line bg-surface px-2 py-1 text-ink"
           />
         </div>
-        <div className="mt-3 flex flex-wrap items-center gap-2 text-xs">
+        <div data-export-ignore className="mt-3 flex flex-wrap items-center gap-2 text-xs">
           <div className="flex gap-0.5 rounded-md bg-surface-2 p-0.5">
             {(["yield", "asw"] as const).map((k) => (
               <button
@@ -220,7 +227,7 @@ export default function GiltMonitor({
         </div>
       </section>
 
-      <section className="card p-4">
+      <section className="card p-4" data-export-card>
         <div className="flex flex-wrap items-center gap-2">
           <h2 className="mr-2 text-sm font-semibold text-ink">History</h2>
           {selected.length === 0 && (
@@ -240,7 +247,7 @@ export default function GiltMonitor({
                   {line.key === "spread" ? "Spread" : line.name}
                 </button>
                 {line.key !== "spread" && (
-                  <button onClick={() => toggle(line.key)} title="Remove this gilt" className="pr-2 pl-0.5 text-muted hover:text-ink">
+                  <button data-export-ignore onClick={() => toggle(line.key)} title="Remove this gilt" className="pr-2 pl-0.5 text-muted hover:text-ink">
                     ✕
                   </button>
                 )}
@@ -249,7 +256,8 @@ export default function GiltMonitor({
           })}
           {selected.length > 0 && (
             <div className="ml-auto flex flex-wrap items-center gap-2">
-              <div className="flex gap-0.5 rounded-md bg-surface-2 p-0.5 text-xs">
+              <ExportButtons />
+              <div data-export-ignore className="flex gap-0.5 rounded-md bg-surface-2 p-0.5 text-xs">
                 {(["yield", "price"] as const).map((m) => (
                   <button
                     key={m}

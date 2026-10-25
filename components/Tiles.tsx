@@ -1,3 +1,4 @@
+import ExportButtons from "./ExportButtons";
 import type { Tile } from "@/lib/analytics";
 
 function Sparkline({ points }: { points: [string, number][] }) {
@@ -43,10 +44,24 @@ export function TileGrid({ tiles }: { tiles: Tile[] }) {
   );
 }
 
-export function Card({ title, subtitle, children }: { title: string; subtitle?: string; children: React.ReactNode }) {
+export function Card({
+  title,
+  subtitle,
+  children,
+  exportable = true,
+}: {
+  title: string;
+  subtitle?: string;
+  children: React.ReactNode;
+  /** Show "Copy image" / "Save PNG" for this card. */
+  exportable?: boolean;
+}) {
   return (
-    <section className="card p-4">
-      <h2 className="text-sm font-semibold text-ink">{title}</h2>
+    <section className="card p-4" data-export-card>
+      <div className="flex items-start justify-between gap-3">
+        <h2 className="text-sm font-semibold text-ink">{title}</h2>
+        {exportable && <ExportButtons />}
+      </div>
       {subtitle && <p className="mt-0.5 text-xs text-muted">{subtitle}</p>}
       <div className="mt-3">{children}</div>
     </section>

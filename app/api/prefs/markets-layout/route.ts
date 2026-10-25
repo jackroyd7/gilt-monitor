@@ -1,5 +1,5 @@
 import type { NextRequest } from "next/server";
-import { sanitizeLayout } from "@/lib/market-layout";
+import { layoutForStorage, sanitizeLayout } from "@/lib/market-layout";
 import { getPref, prefsConfigured, setPref } from "@/lib/prefs-store";
 
 const KEY = "markets-layout";
@@ -28,7 +28,7 @@ export async function PUT(request: NextRequest) {
   const layout = body === null ? null : sanitizeLayout(body);
   if (body !== null && !layout) return Response.json({ error: "invalid layout" }, { status: 400 });
   try {
-    await setPref(KEY, layout);
+    await setPref(KEY, layout && layoutForStorage(layout));
     return Response.json({ synced: true });
   } catch (e) {
     return Response.json({ synced: false, error: (e as Error).message }, { status: 502 });
