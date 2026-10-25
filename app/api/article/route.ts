@@ -8,5 +8,5 @@ export async function GET(request: NextRequest) {
   const item = (await getNews()).items.find((i) => i.id === id);
   if (!item) return Response.json({ error: "Article not in the current feed; refresh the News page." }, { status: 404 });
   const article = await getArticle(item);
-  return Response.json({ ...article, summaries: summariesEnabled() && article.status === "ok" });
+  return Response.json({ ...article, summaries: summariesEnabled() });
 }

@@ -39,6 +39,8 @@ export default function ArticleModal({ item, topicLabel, onClose }: { item: News
 
   const url = data && "url" in data ? data.url : item.url;
   const ok = data && "status" in data && data.status === "ok" ? data : null;
+  // Whether the server has an Anthropic key (known once the article request returns).
+  const aiOn = data && "summaries" in data ? data.summaries : null;
 
   return (
     <Modal
@@ -61,14 +63,19 @@ export default function ArticleModal({ item, topicLabel, onClose }: { item: News
           <a href={url} target="_blank" rel="noopener noreferrer" className="rounded-md border border-line bg-surface-2 px-3 py-1.5 text-sm text-ink hover:bg-surface">
             Open original ↗
           </a>
-          {ok?.summaries && !summary.text && (
+          {aiOn && !summary.text && (
             <button
               onClick={summarise}
               disabled={summary.loading}
               className="rounded-md border border-line px-3 py-1.5 text-sm text-ink hover:bg-surface-2 disabled:opacity-60"
             >
-              {summary.loading ? "Analysing…" : "Market impact"}
+              {summary.loading ? "Analysing…" : ok ? "Market impact" : "Market impact (from headline)"}
             </button>
+          )}
+          {aiOn === false && (
+            <span className="text-xs text-muted" title="Add ANTHROPIC_API_KEY in Vercel (Production) and redeploy">
+              Market impact needs ANTHROPIC_API_KEY
+            </span>
           )}
           {ok && <span className="ml-auto text-xs text-muted">Reader view · {ok.words.toLocaleString("en-GB")} words</span>}
         </>

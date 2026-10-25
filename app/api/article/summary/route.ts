@@ -10,12 +10,12 @@ export async function POST(request: NextRequest) {
   const item = (await getNews()).items.find((i) => i.id === id);
   if (!item) return Response.json({ error: "Article not in the current feed." }, { status: 404 });
   const article = await getArticle(item);
-  if (article.status !== "ok") return Response.json({ error: "No article text to summarise." }, { status: 400 });
   try {
     return Response.json({ summary: await summarise(item, article) });
   } catch (e) {
     if (e instanceof Anthropic.AuthenticationError) return Response.json({ error: "The Anthropic API key was rejected." }, { status: 502 });
     if (e instanceof Anthropic.RateLimitError) return Response.json({ error: "Rate limited by the Anthropic API; try again shortly." }, { status: 429 });
+    if (e instanceof Anthropic.APIConnectionError) return Response.json({ error: "Couldn't reach the Anthropic API; try again." }, { status: 502 });
     if (e instanceof Anthropic.APIError) return Response.json({ error: `Anthropic API error ${e.status}.` }, { status: 502 });
     return Response.json({ error: (e as Error).message }, { status: 500 });
   }

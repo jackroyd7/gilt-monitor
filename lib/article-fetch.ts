@@ -118,7 +118,8 @@ Format:
 - Then "Markets affected:" followed by one bullet per market, most affected first, each as "<market>: <why it matters, and the likely direction if the article gives grounds for one>". Be specific (e.g. "Short-dated gilts", "GBP/USD", "FTSE 100 miners", "Brent crude") rather than generic.
 - Include only markets with a real link to the story, usually one to four. If the story has no meaningful market impact, say so in a single line instead of listing markets.`;
 
-export async function summarise(item: NewsItem, article: Extract<ArticleResult, { status: "ok" }>): Promise<string> {
+/** Market-impact analysis. Uses the article text when we have it, otherwise just the headline. */
+export async function summarise(item: NewsItem, article: ArticleResult): Promise<string> {
   const cached = store.summaries.get(item.id);
   if (cached) return cached;
   const client = new Anthropic();
@@ -134,7 +135,11 @@ export async function summarise(item: NewsItem, article: Extract<ArticleResult, 
     messages: [
       {
         role: "user",
-        content: `Headline: ${item.title}\nSource: ${item.source}\nPublished: ${item.published}\n\n${articleText(article)}`,
+        content:
+          `Headline: ${item.title}\nSource: ${item.source}\nPublished: ${item.published}\n\n` +
+          (article.status === "ok"
+            ? articleText(article)
+            : "Only the headline is available (the article text couldn't be fetched). Base the analysis on the headline, keep it brief, and start with \"Based on the headline only.\""),
       },
     ],
   });
