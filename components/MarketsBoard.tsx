@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { DEFAULT_CHART_SYMBOL, MARKET_GROUPS, TICKER_TAPE, symbolName } from "@/config/markets";
 import Modal from "./Modal";
 import TradingViewWidget from "./TradingViewWidget";
@@ -15,6 +15,15 @@ export default function MarketsBoard({ initialSymbol }: { initialSymbol?: string
   const router = useRouter();
   const [symbol, setSymbol] = useState<string | null>(initialSymbol ?? null);
   const watchlist = MARKET_GROUPS.flatMap((g) => g.symbols.map((s) => s.symbol));
+  // A tall chart: most of the window height (popup header and padding take ~140px),
+  // with a sensible floor on small screens.
+  const [chartHeight, setChartHeight] = useState(640);
+  useEffect(() => {
+    const fit = () => setChartHeight(Math.max(420, Math.round(window.innerHeight * 0.92) - 140));
+    fit();
+    window.addEventListener("resize", fit);
+    return () => window.removeEventListener("resize", fit);
+  }, []);
 
   const close = () => {
     setSymbol(null);
@@ -59,13 +68,15 @@ export default function MarketsBoard({ initialSymbol }: { initialSymbol?: string
         ))}
       </div>
       {symbol && (
-        <Modal wide title={symbolName(symbol) ?? symbol} subtitle={`${symbol} · switch to candles, change interval or add indicators from the chart toolbar`} onClose={close}>
+        <Modal size="full" title={symbolName(symbol) ?? symbol} subtitle={`${symbol} · switch to candles, change interval or add indicators from the chart toolbar`} onClose={close}>
           <TradingViewWidget
             key={symbol}
             widget="advanced-chart"
-            height="min(70vh, 640px)"
+            height={chartHeight}
             config={{
-              autosize: true,
+              // Explicit size rather than autosize, so the chart can't collapse to a strip.
+              width: "100%",
+              height: chartHeight,
               symbol: symbol || DEFAULT_CHART_SYMBOL,
               interval: "D",
               range: "12M",

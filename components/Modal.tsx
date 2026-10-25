@@ -10,6 +10,7 @@ export default function Modal({
   children,
   footer,
   wide = false,
+  size,
 }: {
   title: React.ReactNode;
   subtitle?: React.ReactNode;
@@ -17,6 +18,8 @@ export default function Modal({
   children: React.ReactNode;
   footer?: React.ReactNode;
   wide?: boolean;
+  /** "full" fills most of the window: used for charts. */
+  size?: "full";
 }) {
   const panel = useRef<HTMLDivElement>(null);
 
@@ -42,7 +45,9 @@ export default function Modal({
         role="dialog"
         aria-modal="true"
         tabIndex={-1}
-        className={`card flex max-h-full w-full flex-col shadow-2xl outline-none ${wide ? "max-w-6xl" : "max-w-3xl"}`}
+        className={`card flex max-h-full w-full flex-col shadow-2xl outline-none ${
+          size === "full" ? "h-[92vh] max-w-[1400px]" : wide ? "max-w-6xl" : "max-w-3xl"
+        }`}
       >
         <div className="flex items-start gap-3 border-b border-line px-4 py-3 sm:px-5">
           <div className="min-w-0 flex-1">
@@ -53,7 +58,7 @@ export default function Modal({
             ✕
           </button>
         </div>
-        <div className="min-h-0 flex-1 overflow-y-auto px-4 py-4 sm:px-5">{children}</div>
+        <div className={`min-h-0 flex-1 overflow-y-auto ${size === "full" ? "p-2" : "px-4 py-4 sm:px-5"}`}>{children}</div>
         {footer && <div className="flex flex-wrap items-center gap-2 border-t border-line px-4 py-3 sm:px-5">{footer}</div>}
       </div>
     </div>
