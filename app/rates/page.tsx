@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { connection } from "next/server";
 import HeadlineList from "@/components/HeadlineList";
+import RatesSpreads from "@/components/RatesSpreads";
 import { SeriesChart } from "@/components/charts";
 import { Card, PageHeader } from "@/components/Tiles";
 import TradingViewWidget from "@/components/TradingViewWidget";
@@ -108,31 +109,6 @@ export default async function RatesPage() {
     { name: "US 5y5y inflation", pts: s("US_5Y5Y"), src: "FRED T5YIFR" },
     { name: "US 10y real yield", pts: s("US_REAL10"), src: "FRED DFII10 (TIPS)" },
   ];
-  // Spreads and slopes in bp, daily from our curves.
-  const diff = (a: Point[], b: Point[]): Point[] => {
-    const m = new Map(b);
-    return a.flatMap(([d, v]) => (m.has(d) ? [[d, +((v - m.get(d)!) * 100).toFixed(2)] as Point] : []));
-  };
-  const nearest = (a: Point[], b: Point[]): Point[] => {
-    // Bund dates can differ by a day from gilt/Treasury dates: use the latest Bund on or before.
-    const bs = [...b].sort();
-    let j = 0;
-    return a.flatMap(([d, v]) => {
-      while (j + 1 < bs.length && bs[j + 1][0] <= d) j++;
-      return bs[j] && bs[j][0] <= d ? [[d, +((v - bs[j][1]) * 100).toFixed(2)] as Point] : [];
-    });
-  };
-  const since2 = addDays(since, 365);
-  const de10 = tenorPoints(curves.de_bund, 10, since2);
-  const spreadCharts = [
-    { title: "UK − Germany 10y", note: "Gilt–Bund, daily", points: nearest(tenorPoints(curves.uk_nominal, 10, since2), de10) },
-    { title: "US − Germany 10y", note: "Treasury–Bund, daily", points: nearest(tenorPoints(curves.us_ust, 10, since2), de10) },
-    { title: "UK 2s10s", note: "Gilt curve slope, daily", points: slopes[0].s2s10.map(([d, v]) => [d, +(v * 100).toFixed(2)] as Point) },
-    { title: "US 2s10s", note: "Treasury curve slope, daily", points: slopes[1].s2s10.map(([d, v]) => [d, +(v * 100).toFixed(2)] as Point) },
-    { title: "US 5s30s", note: "Long-end term premium, daily", points: diff(tenorPoints(curves.us_ust, 30, since2), tenorPoints(curves.us_ust, 5, since2)) },
-    { title: "Germany 2s10s", note: "Bund curve slope, daily", points: slopes[2].s2s10.map(([d, v]) => [d, +(v * 100).toFixed(2)] as Point) },
-  ];
-
   const ratesNews = news.items.filter((i) => i.topics.some((t) => ["global", "gilts", "boe"].includes(t))).slice(0, 10);
 
   return (
@@ -206,22 +182,7 @@ export default async function RatesPage() {
             </table>
           </Card>
         </div>
-        <section>
-          <h2 className="mb-1 text-sm font-semibold text-ink">Spreads and slopes</h2>
-          <p className="mb-2 text-xs text-muted">Daily, from the BoE, Bundesbank and US Treasury curves (bp).</p>
-          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-            {spreadCharts.map((c) => (
-              <Card key={c.title} title={c.title} subtitle={c.note}>
-                <div className="num mb-1 text-xs text-ink-2">
-                  Latest <span className="font-medium text-ink">{c.points.at(-1) ? `${c.points.at(-1)![1].toFixed(0)}bp` : "–"}</span>
-                  {" · "}1m {bp(changeSince(c.points, 31) == null ? null : changeSince(c.points, 31)! / 100)}
-                  {" · "}3m {bp(changeSince(c.points, 92) == null ? null : changeSince(c.points, 92)! / 100)}
-                </div>
-                <SeriesChart series={[{ key: "s", name: c.title, color: "var(--series-1)", points: c.points }]} xKind="date" unit="bp" height={180} showLegend={false} />
-              </Card>
-            ))}
-          </div>
-        </section>
+        <RatesSpreads />
         <div className="grid gap-4 lg:grid-cols-2">
           <Card title="Inflation expectations and real yields" subtitle="End of day. UK breakevens are RPI (BoE nominal minus real curve); US breakevens are CPI (Treasuries minus TIPS).">
             <table className="w-full text-sm">

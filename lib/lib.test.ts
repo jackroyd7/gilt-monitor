@@ -614,3 +614,22 @@ test("sanitizeLayout drops cards whose feeds widgets can't show", () => {
   const l = sanitizeLayout({ "Equity indices": [{ symbol: "FTSE:MCX", name: "FTSE 250" }, { symbol: "FOREXCOM:UKXGBP", name: "FTSE 100" }, { symbol: "FOREXCOM:EUSTX50", name: "Euro Stoxx 50" }], _v: 2 })!;
   assert.deepEqual(l["Equity indices"].map((c) => c.symbol), ["FOREXCOM:UKXGBP"]);
 });
+
+import { SECTOR_OF } from "../config/sectors";
+import { STOCKS } from "../config/stock-catalogue";
+
+test("every UK, German and French stock on the list has a sector", () => {
+  const missing = STOCKS.filter((s) => ["UK stocks", "German stocks", "French stocks"].includes(s.group) && !SECTOR_OF[s.symbol]).map((s) => s.symbol);
+  assert.deepEqual(missing, []);
+});
+
+import { SPREAD_MENU, spreadSeries } from "./rates-spreads";
+
+test("spreadSeries: slopes, cross-market (latest other-curve date), levels", () => {
+  const mk = (id: CurveSet["id"], rows: Record<string, (number | null)[]>): CurveSet => ({ id, label: "", source: "", basis: "par_semiannual", tenors: [2, 10, 30], rows });
+  const curves = { uk_nominal: mk("uk_nominal", { "2026-01-02": [4, 4.5, 5], "2026-01-05": [4.1, 4.4, 5] }), de_bund: mk("de_bund", { "2026-01-02": [2, 2.5, 3] }) };
+  assert.deepEqual(spreadSeries("slope:uk_nominal:2:10", curves, undefined, "2026-01-01"), [["2026-01-02", 50], ["2026-01-05", 30]]);
+  assert.deepEqual(spreadSeries("xm:uk-de:10", curves, undefined, "2026-01-01"), [["2026-01-02", 200], ["2026-01-05", 190]]);
+  assert.deepEqual(spreadSeries("lvl:uk_nominal:30", curves, undefined, "2026-01-03"), [["2026-01-05", 5]]);
+  assert.ok(SPREAD_MENU.length > 40 && new Set(SPREAD_MENU.map((m) => m.id)).size === SPREAD_MENU.length);
+});
