@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { Fragment } from "react";
 import { connection } from "next/server";
 import HeadlineList from "@/components/HeadlineList";
 import RatesSpreads from "@/components/RatesSpreads";
@@ -36,6 +37,17 @@ function tenorPoints(set: CurveSet | undefined, t: number, since: string): Point
       return v == null ? [] : [[d, +v.toFixed(4)] as Point];
     });
 }
+
+/** Yield change in bp without the unit (the header says bp); coloured by direction. */
+const moveBp = (v: number | null) => {
+  if (v == null) return "–";
+  const r = Math.round(v * 100);
+  return `${r > 0 ? "+" : r < 0 ? "−" : ""}${Math.abs(r)}`;
+};
+const moveStyle = (v: number | null) => {
+  const r = v == null ? 0 : Math.round(v * 100);
+  return r === 0 ? { color: "var(--ink-2)" } : { color: r > 0 ? "var(--up)" : "var(--down)" };
+};
 
 const pct = (v: number | null | undefined, d = 2) => (v == null ? "–" : `${v.toFixed(d)}%`);
 const bp = (v: number | null) => {
@@ -158,43 +170,59 @@ export default async function RatesPage() {
             </Link>
           </p>
         )}
-        <div className="grid items-start gap-4 lg:grid-cols-2">
-          <Card title="Government bond yields" subtitle="End of day, semi-annual %, with 1-day and 1-month changes. Tap a yield for its chart.">
+        <div className="space-y-4">
+          <Card title="Government bond yields" subtitle="End of day, semi-annual %. Changes in bp: red = yield up (price down), green = yield down. Tap a yield for its chart.">
             <div className="overflow-x-auto">
-              <table className="w-full min-w-[420px] text-sm">
+              <table className="num w-full min-w-[640px] text-sm">
                 <thead>
-                  <tr className="text-xs text-muted">
-                    <th className="py-1 text-left font-normal">Market</th>
+                  <tr className="text-xs text-ink-2">
+                    <th rowSpan={2} className="py-1 pr-3 text-left align-bottom font-normal text-muted">Market</th>
                     {YIELD_TENORS.map((t) => (
-                      <th key={t} className="py-1 text-right font-normal">
+                      <th key={t} colSpan={3} className="border-l border-line py-1 text-center font-medium">
                         {t}y
                       </th>
                     ))}
                   </tr>
+                  <tr className="text-[11px] text-muted">
+                    {YIELD_TENORS.map((t) => (
+                      <Fragment key={t}>
+                        <th className="border-l border-line py-1 pr-1 text-right font-normal">Yield</th>
+                        <th className="w-10 py-1 text-right font-normal">1d</th>
+                        <th className="w-10 py-1 pr-2 text-right font-normal">1m</th>
+                      </Fragment>
+                    ))}
+                  </tr>
                 </thead>
-                <tbody className="num">
+                <tbody>
                   {yieldTable.map((r) => (
-                    <tr key={r.name} className="border-t border-line align-top">
-                      <td className="py-2 text-ink">
+                    <tr key={r.name} className="border-t border-line">
+                      <td className="py-2 pr-3 whitespace-nowrap text-ink">
                         {r.name}
-                        <div className="text-[11px] text-muted">{r.date ?? "no data"}</div>
+                        <span className="ml-1.5 text-[11px] text-muted">{r.date?.slice(5) ?? "no data"}</span>
                       </td>
-                      {r.cells.map((c) => (
-                        <td key={c.t} className="py-2 text-right">
-                          <Link href={`/charts?tvwidgetsymbol=TVC:${r.code}${String(c.t).padStart(2, "0")}Y`} className="hover:text-accent">
-                            <div className="font-medium text-ink">{pct(c.level)}</div>
-                            <div className="text-[11px] text-ink-2">
-                              1d {bp(c.d1)} · 1m {bp(c.m1)}
-                            </div>
-                          </Link>
-                        </td>
-                      ))}
+                      {r.cells.map((c) => {
+                        const href = `/charts?tvwidgetsymbol=TVC:${r.code}${String(c.t).padStart(2, "0")}Y`;
+                        return (
+                          <Fragment key={c.t}>
+                            <td className="border-l border-line py-2 pr-1 text-right">
+                              <Link href={href} className="font-medium text-ink hover:text-accent">
+                                {c.level == null ? "–" : c.level.toFixed(2)}
+                              </Link>
+                            </td>
+                            <td className="py-2 text-right text-xs" style={moveStyle(c.d1)}>{moveBp(c.d1)}</td>
+                            <td className="py-2 pr-2 text-right text-xs" style={moveStyle(c.m1)}>{moveBp(c.m1)}</td>
+                          </Fragment>
+                        );
+                      })}
                     </tr>
                   ))}
                 </tbody>
               </table>
             </div>
-            <p className="mt-2 text-xs text-muted">BoE fitted gilt zero curve, US Treasury par curve and Bundesbank zero curve; these can differ by a few bp from benchmark bond yields.</p>
+            <p className="mt-2 text-xs text-muted">
+              BoE fitted gilt zero curve, US Treasury par curve and Bundesbank zero curve, so levels can differ by a few bp from
+              benchmark bond yields. Dates are the latest close (month-day).
+            </p>
           </Card>
           <Card title="Curves today" subtitle="Zero curves (US: par), semi-annual %. UK BoE, Germany Bundesbank, US Treasury.">
             <SeriesChart series={curveChart} xKind="tenor" unit="pct" height={300} />
