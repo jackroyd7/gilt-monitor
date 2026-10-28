@@ -1,10 +1,13 @@
 import Link from "next/link";
 import { connection } from "next/server";
 import HeadlineList from "@/components/HeadlineList";
+import StockOwnView from "@/components/StockOwnView";
 import StockView from "@/components/StockView";
 import { PageHeader } from "@/components/Tiles";
 import { STOCKS } from "@/config/stock-catalogue";
 import { getQueryNews } from "@/lib/news-fetch";
+import { loadStockQuotes } from "@/lib/data";
+import { stockHistory, widgetsServe } from "@/lib/stock-history";
 import { normaliseTvSymbol } from "@/lib/tv-symbol";
 
 export const metadata = { title: "Stock · Markets Monitor" };
@@ -26,7 +29,12 @@ export default async function StockPage({ searchParams }: PageProps<"/equities/s
   }
   const name = STOCKS.find((s) => s.symbol === symbol)?.name;
   const ticker = symbol.split(":")[1].replace(/\.$/, "");
-  const news = await getQueryNews(name ? `"${name}" (shares OR stock OR results)` : `${ticker} stock`, "stock");
+  const own = !widgetsServe(symbol);
+  const [news, history, quotes] = await Promise.all([
+    getQueryNews(name ? `"${name}" (shares OR stock OR results)` : `${ticker} stock`, "stock"),
+    own ? stockHistory(symbol) : Promise.resolve(null),
+    own ? loadStockQuotes() : Promise.resolve(undefined),
+  ]);
   return (
     <>
       <div className="mb-3 text-xs">
@@ -37,7 +45,15 @@ export default async function StockPage({ searchParams }: PageProps<"/equities/s
       <PageHeader title={name ?? ticker}>{symbol}</PageHeader>
       <div className="grid gap-4 xl:grid-cols-4">
         <div className="xl:col-span-3">
-          <StockView symbol={symbol} />
+          {own ? (
+            <StockOwnView
+              history={history}
+              quote={quotes?.quotes[symbol]}
+              tvUrl={`https://www.tradingview.com/symbols/${symbol.replace(":", "-")}/`}
+            />
+          ) : (
+            <StockView symbol={symbol} />
+          )}
         </div>
         <section className="card h-fit p-4">
           <h2 className="mb-1 text-sm font-semibold text-ink">News</h2>
