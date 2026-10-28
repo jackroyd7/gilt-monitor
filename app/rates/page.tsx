@@ -108,7 +108,7 @@ export default async function RatesPage() {
     { name: "US 5y5y inflation", pts: s("US_5Y5Y"), src: "FRED T5YIFR" },
     { name: "US 10y real yield", pts: s("US_REAL10"), src: "FRED DFII10 (TIPS)" },
   ];
-  // Spreads in bp: daily from our curves, monthly from OECD averages.
+  // Spreads and slopes in bp, daily from our curves.
   const diff = (a: Point[], b: Point[]): Point[] => {
     const m = new Map(b);
     return a.flatMap(([d, v]) => (m.has(d) ? [[d, +((v - m.get(d)!) * 100).toFixed(2)] as Point] : []));
@@ -124,18 +124,14 @@ export default async function RatesPage() {
   };
   const since2 = addDays(since, 365);
   const de10 = tenorPoints(curves.de_bund, 10, since2);
-  const monthly = (id: "IT10M" | "FR10M" | "ES10M") => diff(s(id), s("DE10M")).filter(([d]) => d >= "2015-01-01");
   const spreadCharts = [
-    { title: "UK − Germany 10y", note: "Gilt–Bund, daily", points: nearest(tenorPoints(curves.uk_nominal, 10, since2), de10), monthly: false },
-    { title: "US − Germany 10y", note: "Treasury–Bund, daily", points: nearest(tenorPoints(curves.us_ust, 10, since2), de10), monthly: false },
-    { title: "UK 2s10s", note: "Gilt curve slope, daily", points: slopes[0].s2s10.map(([d, v]) => [d, +(v * 100).toFixed(2)] as Point), monthly: false },
-    { title: "US 2s10s", note: "Treasury curve slope, daily", points: slopes[1].s2s10.map(([d, v]) => [d, +(v * 100).toFixed(2)] as Point), monthly: false },
-    { title: "US 5s30s", note: "Long-end term premium, daily", points: diff(tenorPoints(curves.us_ust, 30, since2), tenorPoints(curves.us_ust, 5, since2)), monthly: false },
-    { title: "Germany 2s10s", note: "Bund curve slope, daily", points: slopes[2].s2s10.map(([d, v]) => [d, +(v * 100).toFixed(2)] as Point), monthly: false },
-    { title: "Italy − Germany 10y", note: "BTP–Bund: euro-area stress gauge, monthly", points: monthly("IT10M"), monthly: true },
-    { title: "France − Germany 10y", note: "OAT–Bund: French fiscal/political risk, monthly", points: monthly("FR10M"), monthly: true },
-    { title: "Spain − Germany 10y", note: "Bonos–Bund, monthly", points: monthly("ES10M"), monthly: true },
-  ].map((c) => ({ ...c, points: c.points.filter(([d]) => !c.monthly || d >= "2018-01-01") }));
+    { title: "UK − Germany 10y", note: "Gilt–Bund, daily", points: nearest(tenorPoints(curves.uk_nominal, 10, since2), de10) },
+    { title: "US − Germany 10y", note: "Treasury–Bund, daily", points: nearest(tenorPoints(curves.us_ust, 10, since2), de10) },
+    { title: "UK 2s10s", note: "Gilt curve slope, daily", points: slopes[0].s2s10.map(([d, v]) => [d, +(v * 100).toFixed(2)] as Point) },
+    { title: "US 2s10s", note: "Treasury curve slope, daily", points: slopes[1].s2s10.map(([d, v]) => [d, +(v * 100).toFixed(2)] as Point) },
+    { title: "US 5s30s", note: "Long-end term premium, daily", points: diff(tenorPoints(curves.us_ust, 30, since2), tenorPoints(curves.us_ust, 5, since2)) },
+    { title: "Germany 2s10s", note: "Bund curve slope, daily", points: slopes[2].s2s10.map(([d, v]) => [d, +(v * 100).toFixed(2)] as Point) },
+  ];
 
   const ratesNews = news.items.filter((i) => i.topics.some((t) => ["global", "gilts", "boe"].includes(t))).slice(0, 10);
 
@@ -212,10 +208,7 @@ export default async function RatesPage() {
         </div>
         <section>
           <h2 className="mb-1 text-sm font-semibold text-ink">Spreads and slopes</h2>
-          <p className="mb-2 text-xs text-muted">
-            Daily from the BoE, Bundesbank and US Treasury curves (bp). Italy, France, Spain and Japan are monthly averages
-            (OECD, via FRED), so they lag by about a month.
-          </p>
+          <p className="mb-2 text-xs text-muted">Daily, from the BoE, Bundesbank and US Treasury curves (bp).</p>
           <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
             {spreadCharts.map((c) => (
               <Card key={c.title} title={c.title} subtitle={c.note}>
@@ -224,7 +217,7 @@ export default async function RatesPage() {
                   {" · "}1m {bp(changeSince(c.points, 31) == null ? null : changeSince(c.points, 31)! / 100)}
                   {" · "}3m {bp(changeSince(c.points, 92) == null ? null : changeSince(c.points, 92)! / 100)}
                 </div>
-                <SeriesChart series={[{ key: "s", name: c.title, color: "var(--series-1)", points: c.points }]} xKind="date" unit="bp" height={180} showLegend={false} defaultRange={c.monthly ? "All" : "1Y"} />
+                <SeriesChart series={[{ key: "s", name: c.title, color: "var(--series-1)", points: c.points }]} xKind="date" unit="bp" height={180} showLegend={false} />
               </Card>
             ))}
           </div>
