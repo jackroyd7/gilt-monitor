@@ -10,7 +10,8 @@
     "typecheck": "next typegen && tsc --noEmit",
     "fetch-data": "tsx scripts/fetch-all.ts",
     "demo-data": "tsx scripts/make-demo-data.ts",
-    "test": "tsx --test lib/lib.test.ts"
+    "test": "tsx --test lib/lib.test.ts",
+    "briefing": "tsx scripts/briefing.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^1.3.0",

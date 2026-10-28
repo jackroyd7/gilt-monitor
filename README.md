@@ -2,6 +2,7 @@
 
 A self-updating markets dashboard built around UK gilts. Tabs: **Overview**, **Gilts** (a menu of Dashboard, Gilts, Curves, vs OIS, Cross-market and Portfolio), **Equities**, **FX**, **Commodities**, **Charts** and **News**. On a phone the tabs move to a bar at the bottom of the screen. A switch in the header picks a light, dark or automatic theme.
 
+- **Overview**: the **morning briefing** (weekdays about 06:40 UK time: Claude reads our closing data and the last day's headlines, searches the web for overnight moves and today's calendar, and writes at most 500 words on rates, equities, FX, commodities, macro and politics, and today's events), the ticker tape, key gilt numbers, TradingView's economic calendar, top headlines and benchmark cards.
 - **Install as an app**: open the site in Safari on iPhone → Share → *Add to Home Screen*. It opens full-screen with its own icon. Sign in once and the device stays signed in for a year.
 - **Charts tab**: search an index, stock, currency pair, commodity or bond yield and chart it full width. Recent symbols are remembered in the browser.
 
@@ -62,8 +63,9 @@ Market data history is kept in `data/curves/*.json` (5 years by default, one lin
    - `DASHBOARD_PASSWORD`: protects the whole site. You sign in on a login page; Basic auth (any username) also works for scripts.
    - `GILTSYIELD_API_KEY`: from your giltsyield.com Profile page.
    - `FINNHUB_API_KEY` (optional): free key from finnhub.io, for the earnings calendar.
-3. **GitHub secret** (recommended): repo → Settings → Secrets and variables → Actions → *New repository secret*, name `GILTSYIELD_API_KEY`. The daily job then records giltsyield.com closes for every gilt; without it, it records DMO closes.
-4. **First data load**: GitHub → Actions → *Update market data* → *Run workflow*. Tick **backfill** for about 3 years of curve history, and set **gilt_days** to backfill per-gilt closes (25 covers the 1-month change; 260 is a year, at roughly 75 giltsyield calls per day backfilled). After that it runs on its own.
+3. **GitHub secret for the briefing**: add `ANTHROPIC_API_KEY` the same way as below (repo → Settings → Secrets and variables → Actions). To write one straight away: Actions → *Morning briefing* → *Run workflow*.
+4. **GitHub secret** (recommended): repo → Settings → Secrets and variables → Actions → *New repository secret*, name `GILTSYIELD_API_KEY`. The daily job then records giltsyield.com closes for every gilt; without it, it records DMO closes.
+5. **First data load**: GitHub → Actions → *Update market data* → *Run workflow*. Tick **backfill** for about 3 years of curve history, and set **gilt_days** to backfill per-gilt closes (25 covers the 1-month change; 260 is a year, at roughly 75 giltsyield calls per day backfilled). After that it runs on its own.
 
 Each data commit triggers a Vercel deploy, so the site is current within a few minutes of each run.
 

@@ -1,0 +1,56 @@
+name: Morning briefing
+
+on:
+  schedule:
+    # Weekdays. Two UTC times so it lands at about 06:40 London time in both GMT and BST;
+    # the script skips the run that falls outside 06:00–08:59 London time.
+    - cron: "40 5,6 * * 1-5"
+  workflow_dispatch:
+    inputs:
+      force:
+        description: "Write a new briefing now, whatever the time"
+        type: boolean
+        default: true
+
+permissions:
+  contents: write
+
+concurrency:
+  group: update-data
+  cancel-in-progress: false
+
+jobs:
+  briefing:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Write briefing
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: npm run briefing -- ${{ (github.event_name == 'workflow_dispatch' && inputs.force) && '--force' || '' }}
+      - name: Commit if changed
+        run: |
+          git add data/briefing.json 2>/dev/null || true
+          if git diff --cached --quiet; then
+            echo "No briefing changes"
+            exit 0
+          fi
+          git config user.name "gilt-monitor-bot"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -m "data: morning briefing $(date -u +%Y-%m-%d)"
+          for attempt in 1 2 3 4; do
+            if git pull --rebase origin main && git push origin HEAD:main; then
+              exit 0
+            fi
+            echo "Push failed (attempt $attempt); retrying"
+            sleep $((attempt * 5))
+          done
+          exit 1

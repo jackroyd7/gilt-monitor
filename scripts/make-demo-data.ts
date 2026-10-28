@@ -195,6 +195,16 @@ function demoMacro() {
 async function main() {
   await mkdir(path.join(DIR, "curves"), { recursive: true });
   await writeFile(path.join(DIR, "macro.json"), JSON.stringify(demoMacro()));
+  await writeFile(
+    path.join(DIR, "briefing.json"),
+    JSON.stringify({
+      generatedAt: new Date().toISOString(),
+      date: end,
+      markdown:
+        "## The big picture\nDEMO TEXT. Bonds rallied after softer US data; sterling steady ahead of UK CPI.\n## Rates\n- **Gilts** firmer: 10y −4bp at 4.42%, curve flatter.\n- USTs 10y −5bp after weak retail sales.\n## Equities\n- FTSE 100 futures +0.3%; S&P 500 closed +0.6%.\n## FX\n- GBP/USD 1.33; EUR/GBP little changed.\n## Commodities\n- Brent −1.2% on supply news; gold +0.4%.\n## Today (UK times)\n- 07:00 **UK CPI** (Sep): consensus 3.4% y/y.\n- 13:30 US jobless claims.",
+      sources: [{ title: "Demo source", url: "https://example.com" }],
+    }),
+  );
   const { fx, cot } = demoFx();
   await writeFile(path.join(DIR, "fx.json"), JSON.stringify(fx));
   await writeFile(path.join(DIR, "cot.json"), JSON.stringify(cot));
