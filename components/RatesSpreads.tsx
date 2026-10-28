@@ -5,7 +5,7 @@ import { DEFAULT_SPREADS, SPREAD_MENU } from "@/lib/rates-spreads";
 import { SeriesChart } from "./charts";
 
 type Point = [string, number];
-const KEY = "gilt-monitor:rates-spreads";
+const KEY = "gilt-monitor:rates-spreads:v2"; // v2: nine-panel default
 
 const change = (pts: Point[], days: number) => {
   const last = pts.at(-1);

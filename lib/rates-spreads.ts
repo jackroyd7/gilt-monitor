@@ -50,7 +50,17 @@ for (const [c, name] of MARKETS) for (const t of [2, 10, 30]) add({ id: `lvl:${c
 
 export const SPREAD_MENU: SpreadDef[] = DEFS.map(({ id, label, group, unit, note }) => ({ id, label, group, unit, note }));
 
-export const DEFAULT_SPREADS = ["xm:uk-de:10", "xm:us-de:10", "slope:uk_nominal:2:10", "slope:us_ust:2:10", "slope:us_ust:5:30", "slope:de_bund:2:10"];
+export const DEFAULT_SPREADS = [
+  "xm:uk-de:10",
+  "xm:us-de:10",
+  "xm:uk-us:10",
+  "slope:uk_nominal:2:10",
+  "slope:us_ust:2:10",
+  "slope:de_bund:2:10",
+  "slope:uk_nominal:10:30",
+  "ois:10",
+  "bei:uk:10",
+];
 
 /** Computes one series since `since`. Legs on other curves use their latest date on or before. */
 export function spreadSeries(id: string, curves: Curves, rates: RatesData | undefined, since: string): Point[] {

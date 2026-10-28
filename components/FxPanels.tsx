@@ -18,8 +18,7 @@ import {
   RangePicker,
   RANGES,
   SeriesChart,
-  toX,
-} from "./charts";
+  toX, useHiddenSeries } from "./charts";
 import Modal from "./Modal";
 import { Card } from "./Tiles";
 
@@ -170,6 +169,7 @@ export function RatesVsFx({ pairs }: { pairs: RatesFxPair[] }) {
         rows.set(toX(d), { ...rows.get(toX(d)), x: toX(d), spread: v });
     return [...rows.values()].sort((a, b) => a.x - b.x);
   }, [p, range]);
+  const { hidden, toggle } = useHiddenSeries(["fx", "spread"]);
   if (!p) return null;
   const lastCorr = p.corr[p.corr.length - 1]?.[1];
 
@@ -213,6 +213,8 @@ export function RatesVsFx({ pairs }: { pairs: RatesFxPair[] }) {
             color: "var(--series-2)",
           },
         ]}
+        hidden={hidden}
+        onToggle={toggle}
       />
       <div style={{ height: 300 }} className="mt-2 w-full">
         <ResponsiveContainer width="100%" height="100%">
@@ -260,6 +262,7 @@ export function RatesVsFx({ pairs }: { pairs: RatesFxPair[] }) {
             <Line
               yAxisId="fx"
               dataKey="fx"
+              hide={hidden.has("fx")}
               stroke="var(--series-1)"
               strokeWidth={2}
               dot={false}
@@ -269,6 +272,7 @@ export function RatesVsFx({ pairs }: { pairs: RatesFxPair[] }) {
             <Line
               yAxisId="spread"
               dataKey="spread"
+              hide={hidden.has("spread")}
               stroke="var(--series-2)"
               strokeWidth={2}
               dot={false}

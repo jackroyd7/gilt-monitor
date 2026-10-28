@@ -75,20 +75,64 @@ export function RangePicker({ value, onChange }: { value: string; onChange: (key
   );
 }
 
-export function Legend({ series }: { series: Pick<Series, "key" | "name" | "color" | "dashed">[] }) {
+/**
+ * Chart legend. With onToggle, each entry is a button that hides / shows its series
+ * (hidden ones are faded and struck through).
+ */
+export function Legend({
+  series,
+  hidden,
+  onToggle,
+}: {
+  series: Pick<Series, "key" | "name" | "color" | "dashed">[];
+  hidden?: Set<string>;
+  onToggle?: (key: string) => void;
+}) {
   if (series.length < 2) return null;
   return (
     <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-ink-2">
-      {series.map((s) => (
-        <span key={s.key} className="inline-flex items-center gap-1.5">
-          <svg width="16" height="8" aria-hidden>
-            <line x1="0" y1="4" x2="16" y2="4" stroke={s.color} strokeWidth="2" strokeDasharray={s.dashed ? "4 3" : undefined} />
-          </svg>
-          {s.name}
-        </span>
-      ))}
+      {series.map((s) => {
+        const off = hidden?.has(s.key);
+        const inner = (
+          <>
+            <svg width="16" height="8" aria-hidden>
+              <line x1="0" y1="4" x2="16" y2="4" stroke={s.color} strokeWidth="2" strokeDasharray={s.dashed ? "4 3" : undefined} />
+            </svg>
+            <span className={off ? "line-through" : undefined}>{s.name}</span>
+          </>
+        );
+        return onToggle ? (
+          <button
+            key={s.key}
+            type="button"
+            onClick={() => onToggle(s.key)}
+            aria-pressed={!off}
+            title={off ? `Show ${s.name}` : `Hide ${s.name}`}
+            className={`inline-flex items-center gap-1.5 rounded hover:text-ink ${off ? "opacity-40" : ""}`}
+          >
+            {inner}
+          </button>
+        ) : (
+          <span key={s.key} className="inline-flex items-center gap-1.5">
+            {inner}
+          </span>
+        );
+      })}
     </div>
   );
+}
+
+/** Hidden-series state for a chart's legend; never hides the last visible series. */
+export function useHiddenSeries(keys: string[]) {
+  const [hidden, setHidden] = useState<Set<string>>(() => new Set());
+  const toggle = (key: string) =>
+    setHidden((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key);
+      else if (keys.filter((k) => !next.has(k)).length > 1) next.add(key);
+      return next;
+    });
+  return { hidden, toggle };
 }
 
 function ChartTooltip({
@@ -125,7 +169,7 @@ function ChartTooltip({
 
 /** Multi-series line chart over tenor (curves) or date (history), with one shared y-axis. */
 export function SeriesChart({
-  series,
+  series: allSeries,
   xKind,
   unit,
   height = 280,
@@ -146,6 +190,8 @@ export function SeriesChart({
 }) {
   const [ownRange, setRange] = useState(defaultRange);
   const range = controlledRange ?? ownRange;
+  const { hidden, toggle } = useHiddenSeries(allSeries.map((s) => s.key));
+  const series = useMemo(() => allSeries.filter((s) => !hidden.has(s.key)), [allSeries, hidden]);
 
   const { data, xMin } = useMemo(() => {
     const all = series.flatMap((s) => s.points.map((p) => toX(p[0])));
@@ -171,7 +217,7 @@ export function SeriesChart({
   return (
     <div className="space-y-2">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        {showLegend && <Legend series={series} />}
+        {showLegend && <Legend series={allSeries} hidden={hidden} onToggle={toggle} />}
         {xKind === "date" && controlledRange == null && <RangePicker value={range} onChange={setRange} />}
       </div>
       <div style={{ height }} className="w-full">
@@ -291,9 +337,12 @@ export function GiltScatter({
   ];
   const picked = points.filter((p) => p.id && selected.includes(p.id));
   const fmt = (v: number) => (unit === "bp" ? `${v.toFixed(1)}bp` : `${v.toFixed(3)}%`);
+  const { hidden, toggle } = useHiddenSeries(legend.map((l) => l.key));
+  const showDots = !hidden.has("c");
+  const showFit = !hidden.has("f");
   return (
     <div className="space-y-2">
-      <Legend series={legend} />
+      <Legend series={legend} hidden={hidden} onToggle={toggle} />
       <div style={{ height }}>
         <ResponsiveContainer width="100%" height="100%">
           <ComposedChart margin={{ top: 8, right: 28, bottom: 0, left: 0 }}>
@@ -326,7 +375,7 @@ export function GiltScatter({
               }}
             />
             <Scatter
-              data={points}
+              data={showDots ? points : []}
               fill="var(--series-1)"
               stroke="var(--surface)"
               strokeWidth={2}
@@ -337,7 +386,7 @@ export function GiltScatter({
                 if (id && onSelect) onSelect(id);
               }}
             />
-            {fitted.length > 0 && (
+            {fitted.length > 0 && showFit && (
               // Drawn as a joined-up scatter with invisible points rather than a <Line>, so the
               // chart keeps per-dot tooltips instead of switching to axis tooltips.
               <Scatter
