@@ -229,3 +229,10 @@ export const SCENARIOS: { label: string; shift: (years: number) => number }[] = 
   { label: "Bear steepener (2y 0, 30y +25bp)", shift: (t) => 25 * Math.max(0, Math.min(1, (t - 2) / 28)) },
   { label: "Flattener (2y +25bp, 30y −25bp)", shift: (t) => 25 - 50 * Math.max(0, Math.min(1, (t - 2) / 28)) },
 ];
+
+/** Forward settlement horizons for gilt forward yields. */
+export const FWD_HORIZONS = [
+  { id: "3m", label: "3 months", days: 91 },
+  { id: "6m", label: "6 months", days: 182 },
+  { id: "1y", label: "1 year", days: 365 },
+] as const;

@@ -121,3 +121,42 @@ export function giltModDuration(couponPct: number, maturity: string, tradeDate: 
   });
   return dpv / pv;
 }
+
+/** Accrued interest per £100 at a settlement date (negative inside the ex-dividend period). */
+function accruedAt(couponPct: number, maturity: string, settle: string) {
+  const { previous, future } = couponSchedule(maturity, settle);
+  const c = couponPct / 2;
+  const next = future[0];
+  const exDiv = settle > addBusinessDays(next, -7);
+  const frac = (toMs(settle) - toMs(previous)) / (toMs(next) - toMs(previous));
+  return { accrued: exDiv ? -c * (1 - frac) : c * frac, exDiv, next };
+}
+
+export interface GiltForward {
+  /** Forward settlement date. */
+  settle: string;
+  clean: number;
+  yield: number;
+}
+
+/**
+ * Forward clean price and yield of a conventional gilt for settlement `days` after spot
+ * settlement, financed at `repoPct` (simple, act/365). Coupons received before the forward
+ * date are reinvested at repo and reduce the forward price.
+ */
+export function giltForward(clean: number, couponPct: number, maturity: string, tradeDate: string, repoPct: number, days: number): GiltForward | null {
+  const spot = addBusinessDays(tradeDate, 1);
+  const fwd = toIso(toMs(spot) + days * DAY);
+  if (maturity <= addBusinessDays(fwd, 5)) return null;
+  const r = repoPct / 100;
+  const a0 = accruedAt(couponPct, maturity, spot);
+  const dirty0 = clean + a0.accrued;
+  // Coupons paid between spot and forward settlement; one already gone ex-dividend isn't ours.
+  const paid = couponSchedule(maturity, spot).future.filter((d, i) => d <= fwd && !(i === 0 && a0.exDiv));
+  const carried = paid.reduce((s, d) => s + (couponPct / 2) * (1 + (r * (toMs(fwd) - toMs(d))) / DAY / 365), 0);
+  const dirtyF = dirty0 * (1 + (r * days) / 365) - carried;
+  const cleanF = dirtyF - accruedAt(couponPct, maturity, fwd).accrued;
+  // Yield on the forward date: price the bond as if trading one business day earlier.
+  const calc = giltYieldFromClean(cleanF, couponPct, maturity, addBusinessDays(fwd, -1));
+  return calc ? { settle: fwd, clean: cleanF, yield: calc.yield } : null;
+}

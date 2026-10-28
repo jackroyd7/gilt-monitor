@@ -2,9 +2,11 @@ import { connection } from "next/server";
 import { CarryTable, ForwardsPanel, ScreensPanel, type CarryRow } from "@/components/RvPanels";
 import { PageHeader } from "@/components/Tiles";
 import { giltRows, rateSA } from "@/lib/analytics";
-import { addDays, dateOnOrBefore, latestDate } from "@/lib/curve";
+import { addDays, dateOnOrBefore, latestDate, sortedDates } from "@/lib/curve";
 import { loadMacro, loadMarketWithLive } from "@/lib/data";
-import { carryRoll, forwardRate, forwardStartingCurve, KEY_FORWARDS, oneYearForwards, zScore } from "@/lib/rv";
+import { giltForward, giltYieldFromClean } from "@/lib/bond";
+
+import { FWD_HORIZONS, carryRoll, forwardRate, forwardStartingCurve, KEY_FORWARDS, oneYearForwards, zScore } from "@/lib/rv";
 import { rvHistory } from "@/lib/rv-data";
 
 export const metadata = { title: "Relative value · Markets Monitor" };
@@ -14,7 +16,7 @@ const shortName = (n: string) => n.replace(/Treasury (Gilt|Stock)\s*/i, "").trim
 export default async function RvPage() {
   await connection();
   const [market, macro] = await Promise.all([loadMarketWithLive(), loadMacro()]);
-  const { rows, fit } = giltRows(market.gilts, market.curves);
+  const { rows, fit, asOf } = giltRows(market.gilts, market.curves);
   const nominal = market.curves.uk_nominal;
 
   // Forwards from the BoE nominal zero curve.
@@ -38,10 +40,20 @@ export default async function RvPage() {
           { key: "f1y", name: "1-year forward rates", color: "var(--series-4)", dashed: true, points: oneYearForwards(nominal, d) },
         ]
       : [];
+  // Key forwards now and a month ago, with two years of daily history for charting.
+  const fwdSince = d ? addDays(d, -2 * 365) : "";
   const fwdTable = KEY_FORWARDS.map((k) => ({
     label: k.label,
     now: nominal && d ? forwardRate(nominal, d, k.start, k.start + k.len) : null,
     m1: nominal && d1m ? forwardRate(nominal, d1m, k.start, k.start + k.len) : null,
+    history: nominal
+      ? sortedDates(nominal)
+          .filter((x) => x >= fwdSince)
+          .flatMap((x) => {
+            const v = forwardRate(nominal, x, k.start, k.start + k.len);
+            return v == null ? [] : [[x, +v.toFixed(4)] as [string, number]];
+          })
+      : [],
   }));
 
   // Repo proxy: Bank Rate from the economic data, else the shortest SONIA OIS point.
@@ -77,6 +89,18 @@ export default async function RvPage() {
             richCheap: r.richCheap,
             rcZ: zScore(rc, 252),
             rcHistory: rc,
+            // Forward yields for settlement in 3, 6 and 12 months, financed at the repo proxy.
+            // The forward − spot move is measured on our own price→yield maths (both legs from
+            // the clean price), then added to the quoted yield, so it is consistent even when the
+            // source's yield and price differ by a few bp.
+            fwd: Object.fromEntries(
+              FWD_HORIZONS.map((h) => {
+                if (r.cleanPrice == null || r.coupon == null || !asOf) return [h.id, null];
+                const spotCalc = giltYieldFromClean(r.cleanPrice, r.coupon, r.maturity, asOf);
+                const fwd = giltForward(r.cleanPrice, r.coupon, r.maturity, asOf, repo, h.days);
+                return [h.id, spotCalc && fwd ? r.yield! + (fwd.yield - spotCalc.yield) : null];
+              }),
+            ),
           },
         ];
       })
@@ -92,7 +116,11 @@ export default async function RvPage() {
       <div className="space-y-4">
         <div className="grid gap-4 xl:grid-cols-2">
           <ForwardsPanel curves={fwdCurves} table={fwdTable} />
-          <ScreensPanel switches={switches.slice(0, 60).map(strip)} flies={flies.slice(0, 60).map(strip)} />
+          <ScreensPanel
+            switches={switches.slice(0, 60).map(strip)}
+            flies={flies.slice(0, 60).map(strip)}
+            gilts={conv.slice().sort((a, b) => a.years - b.years).map((r) => ({ isin: r.isin, name: shortName(r.name) }))}
+          />
         </div>
         {carry.length ? <CarryTable rows={carry} repo={repo} repoLabel={repoLabel} /> : <p className="text-sm text-muted">No gilt prices yet.</p>}
       </div>

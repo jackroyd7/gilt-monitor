@@ -633,3 +633,16 @@ test("spreadSeries: slopes, cross-market (latest other-curve date), levels", () 
   assert.deepEqual(spreadSeries("lvl:uk_nominal:30", curves, undefined, "2026-01-03"), [["2026-01-05", 5]]);
   assert.ok(SPREAD_MENU.length > 40 && new Set(SPREAD_MENU.map((m) => m.id)).size === SPREAD_MENU.length);
 });
+
+import { giltForward } from "./bond";
+
+test("giltForward: positive carry lifts the forward yield; repo = yield leaves it near spot", () => {
+  const spot = giltYieldFromClean(100, 4.5, "2035-03-07", "2026-10-28")!;
+  const f = giltForward(100, 4.5, "2035-03-07", "2026-10-28", 3.75, 91)!;
+  assert.ok(f.yield > spot.yield, `${f.yield} vs ${spot.yield}`);
+  // (y − repo) × h / duration ≈ 0.75% × 0.25 / ~7 ≈ 2.7bp
+  assert.ok((f.yield - spot.yield) * 100 > 1 && (f.yield - spot.yield) * 100 < 5);
+  const flat = giltForward(100, 4.5, "2035-03-07", "2026-10-28", spot.yield, 91)!;
+  assert.ok(Math.abs(flat.yield - spot.yield) * 100 < 0.6);
+  assert.equal(giltForward(100, 4.5, "2026-12-01", "2026-10-28", 4, 91), null);
+});
