@@ -24,7 +24,7 @@ export const NEWS_TOPICS: NewsTopic[] = [
   { id: "global", label: "Global bonds & central banks", queries: ['"Treasury yields" OR "Bund yields" OR "bond market"', '(Fed OR ECB OR "Federal Reserve") interest rates'] },
   { id: "fx", label: "Sterling & FX", queries: ['sterling OR "pound" (dollar OR euro) currency'] },
   { id: "commodities", label: "Oil, gas & metals", queries: ['"oil prices" OR Brent OR "gas prices" OR OPEC', '"gold price" OR copper OR "commodity prices"'] },
-  { id: "equities", label: "Equities", queries: ['"FTSE 100" OR "FTSE 250"', '"stock market" OR "Wall Street" OR "S&P 500"'] },
+  { id: "equities", label: "Equities", queries: ['"FTSE 100" OR "FTSE 250"', '"stock market" OR "Wall Street" OR "S&P 500"', '"European stocks" OR "STOXX 600" OR DAX OR "CAC 40"'] },
 ];
 
 /** Words that make an article rank higher under "Most relevant". */

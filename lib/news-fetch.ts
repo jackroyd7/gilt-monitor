@@ -58,3 +58,34 @@ export async function getNews(opts: { force?: boolean } = {}): Promise<NewsSnaps
     });
   return store.inflight;
 }
+
+// One-off searches (e.g. news on a single company), cached per query like the main feed.
+type QueryCache = Map<string, { at: number; items: NewsItem[] }>;
+const queries = ((globalThis as { __giltQueryNews?: QueryCache }).__giltQueryNews ??= new Map() as QueryCache);
+
+/** Last week's Google News results for one search; never throws. */
+export async function getQueryNews(query: string, topic = "search"): Promise<NewsItem[]> {
+  const hit = queries.get(query);
+  if (hit && Date.now() - hit.at < CACHE_MS) return hit.items;
+  try {
+    const cutoff = Date.now() - MAX_AGE_DAYS * 86_400_000;
+    const items = mergeItems([await fetchFeed(googleNewsUrl(query), topic)])
+      .filter((i) => Date.parse(i.published) >= cutoff)
+      .sort((a, b) => Date.parse(b.published) - Date.parse(a.published))
+      .slice(0, 30);
+    if (queries.size > 200) queries.clear();
+    queries.set(query, { at: Date.now(), items });
+    return items;
+  } catch {
+    return hit?.items ?? [];
+  }
+}
+
+/** A news item shown anywhere on the site, by id (the reader popup looks items up this way). */
+export async function findNewsItem(id: string): Promise<NewsItem | undefined> {
+  for (const q of queries.values()) {
+    const item = q.items.find((i) => i.id === id);
+    if (item) return item;
+  }
+  return (await getNews()).items.find((i) => i.id === id);
+}

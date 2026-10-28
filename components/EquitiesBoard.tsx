@@ -1,0 +1,197 @@
+"use client";
+
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
+import { EQUITY_MARKETS, HEATMAP_PERIODS, SECTOR_GROUPS, STYLE_CHARTS } from "@/config/equities";
+import SymbolPicker from "./SymbolPicker";
+import TradingViewWidget from "./TradingViewWidget";
+
+const MARKET_KEY = "gilt-monitor:equity-market";
+const STOCK_PATH = "/equities/stock";
+
+function Panel({ title, note, action, children }: { title: string; note?: string; action?: React.ReactNode; children: React.ReactNode }) {
+  return (
+    <section className="card p-4">
+      <div className="mb-2 flex flex-wrap items-baseline justify-between gap-2">
+        <div>
+          <h2 className="text-sm font-semibold text-ink">{title}</h2>
+          {note && <p className="text-xs text-muted">{note}</p>}
+        </div>
+        {action}
+      </div>
+      {children}
+    </section>
+  );
+}
+
+/** Heatmap, top movers, sectors and style for the chosen national market. */
+export default function EquitiesBoard() {
+  const router = useRouter();
+  const [market, setMarket] = useState(EQUITY_MARKETS[0].id);
+  const [period, setPeriod] = useState(HEATMAP_PERIODS[0].id);
+  const [picking, setPicking] = useState(false);
+  const m = EQUITY_MARKETS.find((x) => x.id === market) ?? EQUITY_MARKETS[0];
+
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem(MARKET_KEY);
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- one-off read of a saved preference
+      if (saved && EQUITY_MARKETS.some((x) => x.id === saved)) setMarket(saved);
+    } catch {}
+  }, []);
+  const choose = (id: string) => {
+    setMarket(id);
+    try {
+      localStorage.setItem(MARKET_KEY, id);
+    } catch {}
+  };
+
+  return (
+    <div className="space-y-4">
+      <div className="flex flex-wrap items-center gap-2">
+        <label className="flex items-center gap-2 text-sm text-ink-2">
+          Market
+          <select value={market} onChange={(e) => choose(e.target.value)} className="rounded-md border border-line bg-surface px-2 py-1.5 text-sm text-ink">
+            {EQUITY_MARKETS.map((x) => (
+              <option key={x.id} value={x.id}>
+                {x.label}
+              </option>
+            ))}
+          </select>
+        </label>
+        <button
+          onClick={() => setPicking(true)}
+          className="ml-auto flex items-center gap-2 rounded-md border border-line bg-surface px-3 py-1.5 text-sm text-muted"
+        >
+          <span aria-hidden>⌕</span> Look up a stock…
+        </button>
+      </div>
+
+      <div className="grid gap-4 lg:grid-cols-5">
+        <div className="lg:col-span-3">
+          <Panel
+            title={`${m.label.split(" · ")[1]} heatmap`}
+            note="Size = market cap, colour = performance. Click a stock for its page."
+            action={
+              <div className="flex rounded-md border border-line text-xs">
+                {HEATMAP_PERIODS.map((p) => (
+                  <button
+                    key={p.id}
+                    onClick={() => setPeriod(p.id)}
+                    aria-pressed={period === p.id}
+                    className={`px-2 py-1 ${period === p.id ? "bg-surface-2 font-medium text-ink" : "text-ink-2"}`}
+                  >
+                    {p.label}
+                  </button>
+                ))}
+              </div>
+            }
+          >
+            <TradingViewWidget
+              key={`${m.id}-${period}`}
+              widget="stock-heatmap"
+              height={520}
+              chartPath={STOCK_PATH}
+              config={{
+                dataSource: m.heatmap,
+                exchanges: [],
+                grouping: "sector",
+                blockSize: "market_cap_basic",
+                blockColor: period,
+                hasTopBar: false,
+                isDataSetEnabled: false,
+                isZoomEnabled: true,
+                hasSymbolTooltip: true,
+                isMonoSize: false,
+                width: "100%",
+                height: 520,
+              }}
+            />
+          </Panel>
+        </div>
+        <div className="lg:col-span-2">
+          <Panel title="Top movers" note="Gainers, losers and most active today. Click a stock for its page.">
+            <TradingViewWidget
+              key={m.id}
+              widget="hotlists"
+              height={520}
+              chartPath={STOCK_PATH}
+              config={{
+                exchange: m.movers,
+                dateRange: "1D",
+                showChart: true,
+                showSymbolLogo: true,
+                showFloatingTooltip: false,
+                width: "100%",
+                height: 520,
+              }}
+            />
+          </Panel>
+        </div>
+      </div>
+
+      <Panel title="Sector performance" note="Sector ETFs, today. Click one for its chart.">
+        <TradingViewWidget
+          widget="market-quotes"
+          height={480}
+          chartPath="/charts"
+          lazy
+          config={{ width: "100%", height: 480, symbolsGroups: SECTOR_GROUPS, showSymbolLogo: false }}
+        />
+      </Panel>
+
+      <section>
+        <h2 className="mb-2 text-sm font-semibold text-ink">Volatility and style</h2>
+        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+          {STYLE_CHARTS.map((c) => (
+            <Panel
+              key={c.symbol}
+              title={c.title}
+              note={c.note}
+              action={
+                <Link href={`/charts?tvwidgetsymbol=${encodeURIComponent(c.symbol)}`} className="text-xs text-accent">
+                  Full chart ↗
+                </Link>
+              }
+            >
+              <TradingViewWidget
+                widget="advanced-chart"
+                height={240}
+                lazy
+                config={{
+                  width: "100%",
+                  height: 240,
+                  symbol: c.symbol,
+                  interval: "D",
+                  range: "12M",
+                  timezone: "Europe/London",
+                  style: "2",
+                  hide_top_toolbar: true,
+                  hide_legend: true,
+                  hide_side_toolbar: true,
+                  allow_symbol_change: false,
+                  save_image: false,
+                  details: false,
+                  calendar: false,
+                  support_host: "https://www.tradingview.com",
+                }}
+              />
+            </Panel>
+          ))}
+        </div>
+      </section>
+
+      {picking && (
+        <SymbolPicker
+          title="Look up a stock"
+          onClose={() => setPicking(false)}
+          onPick={(s) => {
+            setPicking(false);
+            router.push(`${STOCK_PATH}?tvwidgetsymbol=${encodeURIComponent(s.symbol)}`);
+          }}
+        />
+      )}
+    </div>
+  );
+}

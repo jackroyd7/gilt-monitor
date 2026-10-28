@@ -32,6 +32,7 @@ export default function TradingViewWidget({
   config,
   height,
   chartPath,
+  lazy,
 }: {
   /** Script name after "embed-widget-", e.g. "ticker-tape", "market-quotes", "advanced-chart". */
   widget: string;
@@ -42,14 +43,24 @@ export default function TradingViewWidget({
    * TradingView appends ?tvwidgetsymbol=EXCHANGE:TICKER to it.
    */
   chartPath?: string;
+  /** Load only when scrolled near (for pages with many widgets). */
+  lazy?: boolean;
 }) {
   const ref = useRef<HTMLDivElement>(null);
   const dark = useDarkMode();
   const configJson = JSON.stringify(config);
+  const [visible, setVisible] = useState(!lazy);
+
+  useEffect(() => {
+    if (visible || !ref.current) return;
+    const obs = new IntersectionObserver((entries) => entries.some((e) => e.isIntersecting) && setVisible(true), { rootMargin: "300px" });
+    obs.observe(ref.current);
+    return () => obs.disconnect();
+  }, [visible]);
 
   useEffect(() => {
     const host = ref.current;
-    if (!host) return;
+    if (!host || !visible) return;
     host.innerHTML = '<div class="tradingview-widget-container__widget" style="height:100%;width:100%"></div>';
     const script = document.createElement("script");
     script.src = `https://s3.tradingview.com/external-embedding/embed-widget-${widget}.js`;
@@ -62,13 +73,14 @@ export default function TradingViewWidget({
       isTransparent: true,
       locale: "en",
       // The widget runs in TradingView's iframe, so the link must be absolute.
-      ...(chartPath ? { largeChartUrl: `${window.location.origin}${chartPath}` } : {}),
+      // (the heatmap calls the same setting symbolUrl)
+      ...(chartPath ? { largeChartUrl: `${window.location.origin}${chartPath}`, symbolUrl: `${window.location.origin}${chartPath}` } : {}),
     });
     host.appendChild(script);
     return () => {
       host.innerHTML = "";
     };
-  }, [widget, configJson, dark, chartPath]);
+  }, [widget, configJson, dark, chartPath, visible]);
 
   return <div ref={ref} className="tradingview-widget-container w-full" style={{ height }} />;
 }

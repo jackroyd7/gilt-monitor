@@ -1,13 +1,13 @@
 import type { NextRequest } from "next/server";
 import Anthropic from "@anthropic-ai/sdk";
 import { getArticle, summarise, summariesEnabled } from "@/lib/article-fetch";
-import { getNews } from "@/lib/news-fetch";
+import { findNewsItem } from "@/lib/news-fetch";
 
 /** AI summary of one news item: POST /api/article/summary?id=<item id>. */
 export async function POST(request: NextRequest) {
   if (!summariesEnabled()) return Response.json({ error: "Summaries are off: set ANTHROPIC_API_KEY." }, { status: 400 });
   const id = request.nextUrl.searchParams.get("id") ?? "";
-  const item = (await getNews()).items.find((i) => i.id === id);
+  const item = await findNewsItem(id);
   if (!item) return Response.json({ error: "Article not in the current feed." }, { status: 404 });
   const article = await getArticle(item);
   try {
