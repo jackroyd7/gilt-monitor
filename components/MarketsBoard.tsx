@@ -16,7 +16,22 @@ const CHART_PATH = "/charts";
 const LAYOUT_KEY = "gilt-monitor:markets-layout:v1";
 const CUSTOM = "__custom__";
 const WIDGET_H = 78; // natural height of a one-symbol TradingView tickers widget
-const CARD_SCALE = 1.35; // enlarge the widget (and its price) by this factor
+// Enlarge the widget (and its price) by this factor. Phones get one full-width column at a
+// slightly smaller scale, so TradingView has room for the whole instrument name.
+const CARD_SCALE = 1.35;
+const PHONE_SCALE = 1.2;
+
+function useCardScale() {
+  const [scale, setScale] = useState(CARD_SCALE);
+  useEffect(() => {
+    const mq = window.matchMedia("(max-width: 639px)");
+    const read = () => setScale(mq.matches ? PHONE_SCALE : CARD_SCALE);
+    read();
+    mq.addEventListener("change", read);
+    return () => mq.removeEventListener("change", read);
+  }, []);
+  return scale;
+}
 
 function MarketCard({
   card,
@@ -40,6 +55,7 @@ function MarketCard({
   onDrop: () => void;
 }) {
   const [over, setOver] = useState(false);
+  const scale = useCardScale();
   return (
     <div
       className={`relative overflow-hidden rounded-lg border bg-surface-2/40 ${over ? "border-[color:var(--accent)]" : "border-line"}`}
@@ -57,8 +73,8 @@ function MarketCard({
     >
       {/* TradingView's text can't be restyled inside its iframe, so the widget is scaled up as a
           whole to make the price easier to read. */}
-      <div style={{ height: Math.round(WIDGET_H * CARD_SCALE) }} className="overflow-hidden">
-        <div style={{ width: `${100 / CARD_SCALE}%`, transform: `scale(${CARD_SCALE})`, transformOrigin: "0 0" }}>
+      <div style={{ height: Math.round(WIDGET_H * scale) }} className="overflow-hidden">
+        <div style={{ width: `${100 / scale}%`, transform: `scale(${scale})`, transformOrigin: "0 0" }}>
           <TradingViewWidget
             widget="tickers"
             height={WIDGET_H}
@@ -278,7 +294,7 @@ export default function MarketsBoard({ groups }: { groups?: string[] }) {
                 </select>
               </div>
               {cards.length ? (
-                <div className="mt-3 grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-4">
+                <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4">
                   {cards.map((c, i) => (
                     <MarketCard
                       key={c.symbol}

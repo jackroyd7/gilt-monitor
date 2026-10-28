@@ -1,20 +1,22 @@
-// Equities tab settings. TradingView ids for the heatmap ("dataSource") and top-movers
-// ("exchange") widgets. If a market shows an empty panel, its id is the thing to change.
+// Equities tab settings. TradingView's free widgets only serve US exchanges, so the other
+// markets use our own heat grid and movers from daily quotes (data/stocks.json).
 
 export interface EquityMarket {
   id: string;
   label: string;
-  heatmap: string;
-  movers: string;
+  /** TradingView heatmap dataSource and movers exchange: only US markets work in the free widgets. */
+  tv?: { heatmap: string; movers: string };
+  /** Otherwise our own grid and movers from daily quotes for this stock-list group. */
+  own?: { group: string; prefix?: string };
 }
 
 export const EQUITY_MARKETS: EquityMarket[] = [
-  { id: "uk", label: "UK · FTSE 100", heatmap: "UK100", movers: "LSE" },
-  { id: "us", label: "US · S&P 500", heatmap: "SPX500", movers: "US" },
-  { id: "us-tech", label: "US · Nasdaq 100", heatmap: "NASDAQ100", movers: "NASDAQ" },
-  { id: "de", label: "Germany · DAX", heatmap: "DAX", movers: "XETR" },
-  { id: "fr", label: "France · CAC 40", heatmap: "CAC40", movers: "EURONEXT" },
-  { id: "jp", label: "Japan · Nikkei 225", heatmap: "NI225", movers: "TSE" },
+  { id: "uk", label: "UK · FTSE 100", own: { group: "UK stocks" } },
+  { id: "us", label: "US · S&P 500", tv: { heatmap: "SPX500", movers: "US" } },
+  { id: "us-tech", label: "US · Nasdaq 100", tv: { heatmap: "NASDAQ100", movers: "NASDAQ" } },
+  { id: "de", label: "Germany · DAX & large caps", own: { group: "German stocks" } },
+  { id: "fr", label: "France · CAC 40 & large caps", own: { group: "French stocks" } },
+  { id: "jp", label: "Japan · large caps", own: { group: "Asian stocks", prefix: "TSE:" } },
 ];
 
 /** Heatmap colour: performance over this period ("change" is today). */

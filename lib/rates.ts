@@ -11,6 +11,12 @@ export const RATE_SERIES = [
   { id: "SOFR", fred: "SOFR", name: "SOFR" },
   { id: "ECB", fred: "ECBDFR", name: "ECB deposit rate" },
   { id: "ESTR", fred: "ECBESTRVOLWGTTRMDMNRT", name: "€STR" },
+  // Monthly average 10-year government bond yields (OECD), for spreads we have no daily data for.
+  { id: "IT10M", fred: "IRLTLT01ITM156N", name: "Italy 10y (monthly)" },
+  { id: "FR10M", fred: "IRLTLT01FRM156N", name: "France 10y (monthly)" },
+  { id: "DE10M", fred: "IRLTLT01DEM156N", name: "Germany 10y (monthly)" },
+  { id: "ES10M", fred: "IRLTLT01ESM156N", name: "Spain 10y (monthly)" },
+  { id: "JP10M", fred: "IRLTLT01JPM156N", name: "Japan 10y (monthly)" },
 ] as const;
 export type RateId = (typeof RATE_SERIES)[number]["id"];
 

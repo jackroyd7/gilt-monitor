@@ -3,14 +3,32 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import { EQUITY_MARKETS, HEATMAP_PERIODS, SECTOR_GROUPS, STYLE_CHARTS } from "@/config/equities";
+import {
+  EQUITY_MARKETS,
+  HEATMAP_PERIODS,
+  SECTOR_GROUPS,
+  STYLE_CHARTS,
+} from "@/config/equities";
+import { STOCKS } from "@/config/stock-catalogue";
+import type { StockQuotes } from "@/lib/stocks";
+import { StockHeatGrid, StockMovers, type GridStock } from "./StockGrid";
 import SymbolPicker from "./SymbolPicker";
 import TradingViewWidget from "./TradingViewWidget";
 
 const MARKET_KEY = "gilt-monitor:equity-market";
 const STOCK_PATH = "/equities/stock";
 
-function Panel({ title, note, action, children }: { title: string; note?: string; action?: React.ReactNode; children: React.ReactNode }) {
+function Panel({
+  title,
+  note,
+  action,
+  children,
+}: {
+  title: string;
+  note?: string;
+  action?: React.ReactNode;
+  children: React.ReactNode;
+}) {
   return (
     <section className="card p-4">
       <div className="mb-2 flex flex-wrap items-baseline justify-between gap-2">
@@ -26,12 +44,36 @@ function Panel({ title, note, action, children }: { title: string; note?: string
 }
 
 /** Heatmap, top movers, sectors and style for the chosen national market. */
-export default function EquitiesBoard() {
+export default function EquitiesBoard({ quotes }: { quotes?: StockQuotes }) {
   const router = useRouter();
   const [market, setMarket] = useState(EQUITY_MARKETS[0].id);
   const [period, setPeriod] = useState(HEATMAP_PERIODS[0].id);
   const [picking, setPicking] = useState(false);
   const m = EQUITY_MARKETS.find((x) => x.id === market) ?? EQUITY_MARKETS[0];
+  const own: GridStock[] = m.own
+    ? STOCKS.filter(
+        (st) =>
+          st.group === m.own!.group &&
+          (!m.own!.prefix || st.symbol.startsWith(m.own!.prefix)),
+      ).flatMap((st) => {
+        const q = quotes?.quotes[st.symbol];
+        return q ? [{ symbol: st.symbol, name: st.name, quote: q }] : [];
+      })
+    : [];
+  const asOf = own
+    .map((x) => x.quote.time)
+    .sort()
+    .pop();
+  // Built from parts: whole-string Intl output differs slightly between server and browser.
+  const asOfText = (() => {
+    if (!asOf) return null;
+    const p = Object.fromEntries(
+      new Intl.DateTimeFormat("en-GB", { timeZone: "Europe/London", weekday: "short", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit", hourCycle: "h23" })
+        .formatToParts(new Date(asOf))
+        .map((x) => [x.type, x.value]),
+    );
+    return `${p.weekday} ${p.day} ${p.month}, ${p.hour}:${p.minute}`;
+  })();
 
   useEffect(() => {
     try {
@@ -52,7 +94,11 @@ export default function EquitiesBoard() {
       <div className="flex flex-wrap items-center gap-2">
         <label className="flex items-center gap-2 text-sm text-ink-2">
           Market
-          <select value={market} onChange={(e) => choose(e.target.value)} className="rounded-md border border-line bg-surface px-2 py-1.5 text-sm text-ink">
+          <select
+            value={market}
+            onChange={(e) => choose(e.target.value)}
+            className="rounded-md border border-line bg-surface px-2 py-1.5 text-sm text-ink"
+          >
             {EQUITY_MARKETS.map((x) => (
               <option key={x.id} value={x.id}>
                 {x.label}
@@ -68,82 +114,115 @@ export default function EquitiesBoard() {
         </button>
       </div>
 
-      <div className="grid gap-4 lg:grid-cols-5">
-        <div className="lg:col-span-3">
-          <Panel
-            title={`${m.label.split(" · ")[1]} heatmap`}
-            note="Size = market cap, colour = performance. Hover a tile for details; click it for the stock page."
-            action={
-              <div className="flex rounded-md border border-line text-xs">
-                {HEATMAP_PERIODS.map((p) => (
-                  <button
-                    key={p.id}
-                    onClick={() => setPeriod(p.id)}
-                    aria-pressed={period === p.id}
-                    className={`px-2 py-1 ${period === p.id ? "bg-surface-2 font-medium text-ink" : "text-ink-2"}`}
-                  >
-                    {p.label}
-                  </button>
-                ))}
-              </div>
-            }
-          >
-            <TradingViewWidget
-              key={`${m.id}-${period}`}
-              widget="stock-heatmap"
-              height={520}
-              chartPath={STOCK_PATH}
-              config={{
-                dataSource: m.heatmap,
-                exchanges: [],
-                grouping: "sector",
-                blockSize: "market_cap_basic",
-                blockColor: period,
-                // Our own market picker drives this; TradingView's long index list is hidden.
-                hasTopBar: false,
-                isDataSetEnabled: false,
-                isZoomEnabled: true,
-                hasSymbolTooltip: true,
-                isMonoSize: false,
-                width: "100%",
-                height: 520,
-              }}
-            />
-          </Panel>
+      {m.tv ? (
+        <div className="grid gap-4 lg:grid-cols-5">
+          <div className="lg:col-span-3">
+            <Panel
+              title={`${m.label.split(" · ")[1]} heatmap`}
+              note="Size = market cap, colour = performance. Hover a tile for details; click it for the stock page."
+              action={
+                <div className="flex rounded-md border border-line text-xs">
+                  {HEATMAP_PERIODS.map((p) => (
+                    <button
+                      key={p.id}
+                      onClick={() => setPeriod(p.id)}
+                      aria-pressed={period === p.id}
+                      className={`px-2 py-1 ${period === p.id ? "bg-surface-2 font-medium text-ink" : "text-ink-2"}`}
+                    >
+                      {p.label}
+                    </button>
+                  ))}
+                </div>
+              }
+            >
+              <TradingViewWidget
+                key={`${m.id}-${period}`}
+                widget="stock-heatmap"
+                height={520}
+                chartPath={STOCK_PATH}
+                config={{
+                  dataSource: m.tv.heatmap,
+                  exchanges: [],
+                  grouping: "sector",
+                  blockSize: "market_cap_basic",
+                  blockColor: period,
+                  hasTopBar: false,
+                  isDataSetEnabled: false,
+                  isZoomEnabled: true,
+                  hasSymbolTooltip: true,
+                  isMonoSize: false,
+                  width: "100%",
+                  height: 520,
+                }}
+              />
+            </Panel>
+          </div>
+          <div className="lg:col-span-2">
+            <Panel
+              title="Top movers"
+              note="Gainers, losers and most active today. Click a stock for its page."
+            >
+              <TradingViewWidget
+                key={m.id}
+                widget="hotlists"
+                height={520}
+                chartPath={STOCK_PATH}
+                config={{
+                  exchange: m.tv.movers,
+                  dateRange: "1D",
+                  showChart: true,
+                  showSymbolLogo: true,
+                  showFloatingTooltip: false,
+                  width: "100%",
+                  height: 520,
+                }}
+              />
+            </Panel>
+          </div>
         </div>
-        <div className="lg:col-span-2">
-          <Panel title="Top movers" note="Gainers, losers and most active today. Click a stock for its page.">
-            <TradingViewWidget
-              key={m.id}
-              widget="hotlists"
-              height={520}
-              chartPath={STOCK_PATH}
-              config={{
-                exchange: m.movers,
-                dateRange: "1D",
-                showChart: true,
-                showSymbolLogo: true,
-                showFloatingTooltip: false,
-                width: "100%",
-                height: 520,
-              }}
-            />
-          </Panel>
+      ) : (
+        <div className="grid gap-4 lg:grid-cols-5">
+          <div className="lg:col-span-3">
+            <Panel
+              title={`${m.label.split(" · ")[1]}: today's moves`}
+              note={`Large stocks on our list, by % change on the previous close${asOfText ? ` (prices as of ${asOfText} UK, delayed)` : ""}. Click a tile for the stock page.`}
+            >
+              <StockHeatGrid stocks={own} />
+            </Panel>
+          </div>
+          <div className="lg:col-span-2">
+            <Panel
+              title="Top movers"
+              note="Biggest risers and fallers among them."
+            >
+              <StockMovers stocks={own} />
+            </Panel>
+          </div>
         </div>
-      </div>
+      )}
 
-      <Panel title="Sector performance" note="Sector ETFs, today. Click one for its chart.">
+      <Panel
+        title="Sector performance"
+        note="Sector ETFs, today. Click one for its chart."
+      >
         <TradingViewWidget
           widget="market-quotes"
           height={480}
           chartPath="/charts"
           lazy
-          config={{ width: "100%", height: 480, symbolsGroups: SECTOR_GROUPS, showSymbolLogo: false }}
+          config={{
+            width: "100%",
+            height: 480,
+            symbolsGroups: SECTOR_GROUPS,
+            showSymbolLogo: false,
+          }}
         />
       </Panel>
 
       <section>
-        <h2 className="mb-2 text-sm font-semibold text-ink">Volatility and style</h2>
+        <h2 className="mb-2 text-sm font-semibold text-ink">
+          Volatility and style
+        </h2>
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
           {STYLE_CHARTS.map((c) => (
             <Panel
@@ -151,7 +230,10 @@ export default function EquitiesBoard() {
               title={c.title}
               note={c.note}
               action={
-                <Link href={`/charts?tvwidgetsymbol=${encodeURIComponent(c.symbol)}`} className="text-xs text-accent">
+                <Link
+                  href={`/charts?tvwidgetsymbol=${encodeURIComponent(c.symbol)}`}
+                  className="text-xs text-accent"
+                >
                   Full chart ↗
                 </Link>
               }
@@ -189,7 +271,9 @@ export default function EquitiesBoard() {
           onClose={() => setPicking(false)}
           onPick={(s) => {
             setPicking(false);
-            router.push(`${STOCK_PATH}?tvwidgetsymbol=${encodeURIComponent(s.symbol)}`);
+            router.push(
+              `${STOCK_PATH}?tvwidgetsymbol=${encodeURIComponent(s.symbol)}`,
+            );
           }}
         />
       )}

@@ -5,6 +5,7 @@ import type { Briefing } from "./briefing";
 import type { CommodityData } from "./commodities";
 import type { PolicyData } from "./policy";
 import type { RatesData } from "./rates";
+import type { StockQuotes } from "./stocks";
 import type { CotHistory, FxHistory } from "./fx";
 import type { MacroData } from "./macro";
 import { withLatestCloses } from "./history";
@@ -45,6 +46,11 @@ export async function loadFx(): Promise<{ fx: FxHistory | undefined; cot: CotHis
 /** Commodity prices, US crude stocks and CFTC positioning. */
 export async function loadCommodities(): Promise<CommodityData | undefined> {
   return readJson<CommodityData>(path.join(dataDir(), "commodities.json"));
+}
+
+/** Daily quotes for UK, European and Asian stocks. */
+export async function loadStockQuotes(): Promise<StockQuotes | undefined> {
+  return readJson<StockQuotes>(path.join(dataDir(), "stocks.json"));
 }
 
 /** US breakevens, real yields and overnight / policy rates. */

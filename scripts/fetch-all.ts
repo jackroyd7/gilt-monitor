@@ -16,6 +16,7 @@ import type { MacroData } from "../lib/macro";
 import type { CommodityData } from "../lib/commodities";
 import type { PolicyData } from "../lib/policy";
 import type { RatesData } from "../lib/rates";
+import type { StockQuotes } from "../lib/stocks";
 import { fetchBoe } from "./sources/boe";
 import { fetchBundesbank } from "./sources/bundesbank";
 import { fetchDmo } from "./sources/dmo";
@@ -24,6 +25,7 @@ import { fetchMacro } from "./sources/macro";
 import { fetchCommodities } from "./sources/commodities";
 import { fetchPolicy } from "./sources/policy";
 import { fetchRates } from "./sources/rates";
+import { fetchStockQuotes } from "./sources/stocks";
 import { fetchUst } from "./sources/ust";
 
 const DATA = path.resolve(process.env.DATA_DIR ?? "data");
@@ -144,6 +146,15 @@ async function main() {
     await writeFile(file, JSON.stringify(data) + "\n");
     const latest = Object.values(data.series).map((p) => p?.at(-1)?.[0] ?? "").sort().pop();
     return { latestDate: latest, message: failures.length ? `failed: ${failures.join(" | ")}` : `${Object.keys(data.series).length} series` };
+  });
+
+  await run("stocks", async () => {
+    const file = path.join(DATA, "stocks.json");
+    const { data, ok, total } = await fetchStockQuotes(await readJson<StockQuotes>(file));
+    if (!ok) throw new Error(`no quotes for any of ${total} stocks`);
+    await writeFile(file, JSON.stringify(data) + "\n");
+    const latest = Object.values(data.quotes).map((q) => q.time.slice(0, 10)).sort().pop();
+    return { latestDate: latest, message: `${ok}/${total} UK, European and Asian stocks` };
   });
 
   let dmoSnapshot: GiltSnapshot | undefined;

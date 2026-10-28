@@ -5,13 +5,14 @@ import HeadlineList from "@/components/HeadlineList";
 import MarketsBoard, { TickerTape } from "@/components/MarketsBoard";
 import { PageHeader } from "@/components/Tiles";
 import { getEarnings } from "@/lib/earnings-fetch";
+import { loadStockQuotes } from "@/lib/data";
 import { getNews } from "@/lib/news-fetch";
 
 export const metadata = { title: "Equities · Markets Monitor" };
 
 export default async function EquitiesPage() {
   await connection();
-  const [earnings, allNews] = await Promise.all([getEarnings(), getNews()]);
+  const [earnings, allNews, quotes] = await Promise.all([getEarnings(), getNews(), loadStockQuotes()]);
   const news = allNews.items.filter((i) => i.topics.includes("equities")).slice(0, 12);
   return (
     <>
@@ -22,7 +23,7 @@ export default async function EquitiesPage() {
       <TickerTape />
       <div className="space-y-4">
         <MarketsBoard groups={["Equity indices"]} />
-        <EquitiesBoard />
+        <EquitiesBoard quotes={quotes} />
         <section className="card p-4">
           <h2 className="mb-2 text-sm font-semibold text-ink">Earnings calendar</h2>
           {earnings ? (

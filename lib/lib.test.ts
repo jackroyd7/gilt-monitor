@@ -591,3 +591,21 @@ test("meetingPath turns forwards into implied Bank Rate per meeting", () => {
   assert.ok(p[1].cumulative < -18 && p[1].cumulative > -26, `got ${p[1].cumulative}`);
   assert.ok(p[0].cumulative > p[1].cumulative && Math.abs(p[2].cumulative + 25) < 1);
 });
+
+import { parseYahooChart, yahooSymbol } from "./stocks";
+
+test("yahooSymbol and parseYahooChart", () => {
+  assert.equal(yahooSymbol("LSE:BP."), "BP.L");
+  assert.equal(yahooSymbol("LSE:BT.A"), "BT-A.L");
+  assert.equal(yahooSymbol("XETR:SAP"), "SAP.DE");
+  assert.equal(yahooSymbol("EURONEXT:MC"), "MC.PA");
+  assert.equal(yahooSymbol("TSE:7203"), "7203.T");
+  assert.equal(yahooSymbol("HKEX:700"), "0700.HK");
+  const t = (d: string) => Date.parse(d + "T08:00:00Z") / 1000;
+  const q = parseYahooChart({
+    chart: { result: [{ meta: { regularMarketPrice: 105, regularMarketTime: t("2026-10-28") + 3600, currency: "GBp" }, timestamp: [t("2026-10-26"), t("2026-10-27"), t("2026-10-28")], indicators: { quote: [{ close: [98, 100, 104] }] } }] },
+  })!;
+  assert.equal(q.prevClose, 100);
+  assert.ok(Math.abs(q.change - 5) < 1e-9);
+  assert.equal(parseYahooChart({ chart: { result: [] } }), null);
+});

@@ -196,6 +196,16 @@ async function main() {
   await mkdir(path.join(DIR, "curves"), { recursive: true });
   await writeFile(path.join(DIR, "macro.json"), JSON.stringify(demoMacro()));
   {
+    const { STOCKS } = await import("../config/stock-catalogue");
+    const quotes: Record<string, { price: number; prevClose: number; change: number; time: string; currency: string }> = {};
+    for (const st of STOCKS.filter((x) => x.group !== "US stocks")) {
+      const prev = 50 + rand() * 500;
+      const change = gauss() * 1.4;
+      quotes[st.symbol] = { price: +(prev * (1 + change / 100)).toFixed(2), prevClose: +prev.toFixed(2), change, time: new Date().toISOString(), currency: "DEMO" };
+    }
+    await writeFile(path.join(DIR, "stocks.json"), JSON.stringify({ updatedAt: new Date().toISOString(), quotes }));
+  }
+  {
     // OIS short-end forwards: a gentle easing path, and Bank Rate / SONIA / MPC dates.
     const tenors = Array.from({ length: 60 }, (_, i) => +((i + 1) / 12).toFixed(4));
     const rows: Record<string, number[]> = {};

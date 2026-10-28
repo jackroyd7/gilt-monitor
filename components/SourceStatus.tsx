@@ -12,6 +12,7 @@ const NAMES: Record<string, string> = {
   commodities: "Commodity prices & positioning",
   boe_policy: "Bank Rate & MPC dates",
   rates: "US breakevens & overnight rates",
+  stocks: "UK/European/Asian stock prices",
 };
 
 export default async function SourceStatus() {
