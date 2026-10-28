@@ -6,6 +6,7 @@ import MarketsBoard, { TickerTape } from "@/components/MarketsBoard";
 import { Card, PageHeader, TileGrid } from "@/components/Tiles";
 import TradingViewWidget from "@/components/TradingViewWidget";
 import { headlineMetrics, tile } from "@/lib/analytics";
+import { londonClock } from "@/lib/briefing";
 import { loadBriefing, loadMarket } from "@/lib/data";
 import { getNews } from "@/lib/news-fetch";
 
@@ -18,7 +19,7 @@ export default async function OverviewPage() {
     <>
       <PageHeader title="Overview" />
       <div className="space-y-4">
-        <BriefingCard briefing={briefing} now={new Date()} />
+        <BriefingCard briefing={briefing} today={londonClock().date} />
         <TickerTape />
         <div>
           <div className="mb-2 flex items-baseline justify-between">
