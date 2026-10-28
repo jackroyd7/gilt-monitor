@@ -1291,3 +1291,25 @@ test("quote summary parses into stock metrics", async () => {
   assert.equal(fmtMoney(7.1e10, "GBP"), "£71.0bn");
   assert.equal(fmtMoney(2.31e12, "USD"), "$2.31tn");
 });
+
+test("price tools: moving average, alignment and range stats", async () => {
+  const { sma, alignTo, rangeStats, rangeStart } =
+    await import("./price-tools");
+  const pts: [string, number][] = [
+    ["2026-01-01", 100],
+    ["2026-01-02", 110],
+    ["2026-01-05", 99],
+    ["2026-01-06", 121],
+  ];
+  assert.deepEqual(sma(pts, 2), [undefined, 105, 104.5, 110]);
+  assert.deepEqual(alignTo(["2025-12-31", "2026-01-03", "2026-01-06"], pts), [
+    undefined,
+    110,
+    121,
+  ]);
+  const s = rangeStats(pts)!;
+  assert.ok(Math.abs(s.change - 21) < 1e-9);
+  assert.equal(s.high, 121);
+  assert.ok(Math.abs(s.maxDrawdown - -10) < 1e-9);
+  assert.equal(rangeStart("2026-10-28", "YTD"), "2025-12-31");
+});

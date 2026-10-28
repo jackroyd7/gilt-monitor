@@ -13,31 +13,45 @@ const MODULES = "price,summaryDetail,defaultKeyStatistics,financialData";
 const REFRESH_MS = 20 * 3600_000;
 
 async function session(): Promise<{ cookie: string; crumb: string }> {
-  for (const url of ["https://fc.yahoo.com/", "https://finance.yahoo.com/"]) {
+  const notes: string[] = [];
+  for (const url of [
+    "https://fc.yahoo.com/",
+    "https://finance.yahoo.com/quote/AAPL/",
+    "https://login.yahoo.com/",
+  ]) {
     try {
       const res = await fetch(url, {
-        headers: { "User-Agent": UA },
+        headers: { "User-Agent": UA, Accept: "text/html,*/*" },
         redirect: "manual",
         signal: AbortSignal.timeout(20_000),
       });
       const cookie = res.headers
         .getSetCookie()
         .map((c) => c.split(";")[0])
+        .filter(Boolean)
         .join("; ");
-      if (!cookie) continue;
-      const c = await fetch(
-        "https://query2.finance.yahoo.com/v1/test/getcrumb",
-        {
-          headers: { "User-Agent": UA, Cookie: cookie },
-          signal: AbortSignal.timeout(20_000),
-        },
-      );
-      const crumb = (await c.text()).trim();
-      if (c.ok && crumb && !crumb.includes("<") && crumb.length < 40)
-        return { cookie, crumb };
-    } catch {}
+      if (!cookie) {
+        notes.push(`${new URL(url).host} ${res.status} no cookie`);
+        continue;
+      }
+      for (const host of ["query1", "query2"]) {
+        const c = await fetch(
+          `https://${host}.finance.yahoo.com/v1/test/getcrumb`,
+          {
+            headers: { "User-Agent": UA, Cookie: cookie, Accept: "*/*" },
+            signal: AbortSignal.timeout(20_000),
+          },
+        );
+        const crumb = (await c.text()).trim();
+        if (c.ok && crumb && !crumb.includes("<") && crumb.length < 40)
+          return { cookie, crumb };
+        notes.push(`${host} crumb ${c.status}`);
+      }
+    } catch (e) {
+      notes.push(`${new URL(url).host} ${(e as Error).message.slice(0, 30)}`);
+    }
   }
-  throw new Error("couldn't get a Yahoo session");
+  throw new Error(`couldn't get a Yahoo session (${notes.join("; ")})`);
 }
 
 export async function fetchStockMetrics(

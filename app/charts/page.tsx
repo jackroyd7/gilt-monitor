@@ -8,6 +8,8 @@ import type { CurveId } from "@/lib/types";
 import { PageHeader } from "@/components/Tiles";
 import { normaliseTvSymbol } from "@/lib/tv-symbol";
 import { stockHistory, widgetsServe } from "@/lib/stock-history";
+import PriceTool from "@/components/PriceTool";
+import { STOCKS } from "@/config/stock-catalogue";
 import { yahooSymbol } from "@/lib/stocks";
 
 export const metadata = { title: "Charts · Markets Monitor" };
@@ -131,22 +133,14 @@ async function ownStockChart(symbol: string | undefined) {
           <span className="ml-2 text-xs text-muted">{h.exchange}</span>
         )}
       </p>
-      <SeriesChart
-        series={[
-          {
-            key: "p",
-            name: "Close",
-            color: "var(--series-1)",
-            points: h.points,
-          },
-        ]}
-        xKind="date"
-        unit="price"
+      <PriceTool
+        points={h.points}
+        name={STOCKS.find((s) => s.symbol === symbol)?.name ?? symbol}
+        unit={h.currency === "GBp" ? "p" : ""}
         height={420}
-        showLegend={false}
       />
       <p className="mt-2 text-xs text-muted">
-        Daily closes over two years from Yahoo Finance, as TradingView&apos;s
+        Daily closes over five years from Yahoo Finance, as TradingView&apos;s
         free charts only carry US-listed stocks.{" "}
         <a
           href={`/equities/stock?tvwidgetsymbol=${encodeURIComponent(symbol)}`}

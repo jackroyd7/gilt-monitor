@@ -87,6 +87,7 @@ export default async function StockPage({
               quote={quotes?.quotes[symbol]}
               tvUrl={`https://www.tradingview.com/symbols/${symbol.replace(":", "-")}/`}
               metrics={metricsPanel}
+              name={name ?? ticker}
             />
           ) : (
             <StockView symbol={symbol} metrics={metricsPanel} />

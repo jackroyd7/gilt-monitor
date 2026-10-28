@@ -1,4 +1,4 @@
-import { SeriesChart } from "./charts";
+import PriceTool from "./PriceTool";
 import type { StockHistory } from "@/lib/stock-history";
 import type { StockQuote } from "@/lib/stocks";
 
@@ -39,11 +39,13 @@ export default function StockOwnView({
   quote,
   tvUrl,
   metrics,
+  name,
 }: {
   history: StockHistory | null;
   quote?: StockQuote;
   tvUrl: string;
   metrics?: React.ReactNode;
+  name?: string;
 }) {
   const price = history?.price ?? quote?.price;
   const pts = history?.points ?? [];
@@ -92,15 +94,12 @@ export default function StockOwnView({
       </section>
       {metrics}
       <section className="card p-4">
-        <h2 className="mb-2 text-sm font-semibold text-ink">Price history</h2>
-        <SeriesChart
-          series={[
-            { key: "p", name: "Close", color: "var(--series-1)", points: pts },
-          ]}
-          xKind="date"
-          unit="price"
-          height={340}
-          showLegend={false}
+        <h2 className="mb-2 text-sm font-semibold text-ink">Price chart</h2>
+        <PriceTool
+          points={pts}
+          name={name ?? history?.symbol ?? "Price"}
+          unit={ccy(currency)}
+          height={360}
         />
       </section>
       <p className="text-xs text-muted">
