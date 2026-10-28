@@ -4,35 +4,25 @@ import HeadlineList from "@/components/HeadlineList";
 import RatesSpreads from "@/components/RatesSpreads";
 import { SeriesChart } from "@/components/charts";
 import { Card, PageHeader } from "@/components/Tiles";
-import TradingViewWidget from "@/components/TradingViewWidget";
 import { rateSA } from "@/lib/analytics";
 import { addDays, latestDate, sortedDates } from "@/lib/curve";
 import { loadMarket, loadPolicy, loadRates } from "@/lib/data";
 import { getNews } from "@/lib/news-fetch";
 import { policyView } from "@/lib/policy-view";
 import { changeSince } from "@/lib/rv";
-import type { CurveSet } from "@/lib/types";
+import type { CurveId, CurveSet } from "@/lib/types";
 
 export const metadata = { title: "Rates · Markets Monitor" };
 
 type Point = [string, number];
 
-// Government bond yields by maturity (TradingView's yield symbols).
-const COUNTRIES = [
-  ["US", "US"],
-  ["GB", "UK"],
-  ["DE", "Germany"],
-  ["FR", "France"],
-  ["IT", "Italy"],
-  ["ES", "Spain"],
-  ["JP", "Japan"],
-  ["CA", "Canada"],
-  ["AU", "Australia"],
-] as const;
-const YIELD_GROUPS = (["02", "10", "30"] as const).map((m) => ({
-  name: `${Number(m)}-year`,
-  symbols: COUNTRIES.filter(([c]) => !(m === "30" && c === "ES")).map(([c, n]) => ({ name: `TVC:${c}${m}Y`, displayName: n })),
-}));
+// Government bond yields table: our own curves (TradingView's free widgets don't carry yields).
+const YIELD_TENORS = [2, 5, 10, 30];
+const YIELD_ROWS: [CurveId, string, string][] = [
+  ["uk_nominal", "UK gilts", "GB"],
+  ["us_ust", "US Treasuries", "US"],
+  ["de_bund", "German Bunds", "DE"],
+];
 
 
 
@@ -48,7 +38,11 @@ function tenorPoints(set: CurveSet | undefined, t: number, since: string): Point
 }
 
 const pct = (v: number | null | undefined, d = 2) => (v == null ? "–" : `${v.toFixed(d)}%`);
-const bp = (v: number | null) => (v == null ? "–" : `${v > 0 ? "+" : v < 0 ? "−" : ""}${Math.abs(v * 100).toFixed(0)}bp`);
+const bp = (v: number | null) => {
+  if (v == null) return "–";
+  const r = Math.round(v * 100); // round first so tiny moves don't show as "−0bp"
+  return `${r > 0 ? "+" : r < 0 ? "−" : ""}${Math.abs(r)}bp`;
+};
 
 export default async function RatesPage() {
   await connection();
@@ -94,6 +88,20 @@ export default async function RatesPage() {
         return v == null ? [] : [[t, +v.toFixed(4)] as [number, number]];
       });
     return [{ key: `c${i}`, name: `${c.name} (${d})`, color: `var(--series-${i + 1})`, points: pts }];
+  });
+
+  // Yields table: level with 1-day and 1-month changes (in % points, shown as bp).
+  const yieldTable = YIELD_ROWS.map(([id, name, code]) => {
+    const set = curves[id];
+    return {
+      name,
+      code,
+      date: latestDate(set),
+      cells: YIELD_TENORS.map((t) => {
+        const pts = tenorPoints(set, t, addDays(since, 2 * 365));
+        return { t, level: pts.at(-1)?.[1] ?? null, d1: changeSince(pts, 1), m1: changeSince(pts, 31) };
+      }),
+    };
   });
 
   // Inflation and real yields.
@@ -150,9 +158,43 @@ export default async function RatesPage() {
             </Link>
           </p>
         )}
-        <div className="grid gap-4 lg:grid-cols-2">
-          <Card title="Government bond yields" subtitle="Live, by maturity. Click one for its chart." exportable={false}>
-            <TradingViewWidget widget="market-quotes" height={440} chartPath="/charts" lazy config={{ width: "100%", height: 440, symbolsGroups: YIELD_GROUPS, showSymbolLogo: false }} />
+        <div className="grid items-start gap-4 lg:grid-cols-2">
+          <Card title="Government bond yields" subtitle="End of day, semi-annual %, with 1-day and 1-month changes. Tap a yield for its chart.">
+            <div className="overflow-x-auto">
+              <table className="w-full min-w-[420px] text-sm">
+                <thead>
+                  <tr className="text-xs text-muted">
+                    <th className="py-1 text-left font-normal">Market</th>
+                    {YIELD_TENORS.map((t) => (
+                      <th key={t} className="py-1 text-right font-normal">
+                        {t}y
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody className="num">
+                  {yieldTable.map((r) => (
+                    <tr key={r.name} className="border-t border-line align-top">
+                      <td className="py-2 text-ink">
+                        {r.name}
+                        <div className="text-[11px] text-muted">{r.date ?? "no data"}</div>
+                      </td>
+                      {r.cells.map((c) => (
+                        <td key={c.t} className="py-2 text-right">
+                          <Link href={`/charts?tvwidgetsymbol=TVC:${r.code}${String(c.t).padStart(2, "0")}Y`} className="hover:text-accent">
+                            <div className="font-medium text-ink">{pct(c.level)}</div>
+                            <div className="text-[11px] text-ink-2">
+                              1d {bp(c.d1)} · 1m {bp(c.m1)}
+                            </div>
+                          </Link>
+                        </td>
+                      ))}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            <p className="mt-2 text-xs text-muted">BoE fitted gilt zero curve, US Treasury par curve and Bundesbank zero curve; these can differ by a few bp from benchmark bond yields.</p>
           </Card>
           <Card title="Curves today" subtitle="Zero curves (US: par), semi-annual %. UK BoE, Germany Bundesbank, US Treasury.">
             <SeriesChart series={curveChart} xKind="tenor" unit="pct" height={300} />

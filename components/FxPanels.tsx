@@ -276,6 +276,11 @@ export function RatesVsFx({ pairs }: { pairs: RatesFxPair[] }) {
           </LineChart>
         </ResponsiveContainer>
       </div>
+      <p className="mt-2 text-xs leading-relaxed text-ink-2">
+        When UK yields rise relative to US or German yields, sterling usually strengthens. The lines moving together
+        means rates are driving the currency; when they split, something else (risk appetite, politics, growth fears)
+        is in charge.
+      </p>
       <div className="mt-4">
         <h3 className="mb-1 text-xs font-medium text-ink-2">
           Rolling 3-month correlation

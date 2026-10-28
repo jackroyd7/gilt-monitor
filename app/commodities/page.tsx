@@ -52,9 +52,24 @@ const SECTORS = [
 ];
 
 const RATIOS = [
-  { symbol: "TVC:GOLD/TVC:SILVER", title: "Gold / silver", note: "Rises in risk-off phases" },
-  { symbol: "CAPITALCOM:COPPER/TVC:GOLD", title: "Copper / gold", note: "Growth signal; often tracks bond yields" },
-  { symbol: "TVC:UKOIL/FX:GBPUSD", title: "Brent in sterling", note: "£ per barrel: what matters for UK inflation" },
+  {
+    symbol: "TVC:GOLD/TVC:SILVER",
+    title: "Gold / silver",
+    note: "Ounces of silver per ounce of gold",
+    explain: "Rising: gold (a haven) beating silver, which is half industrial metal, typical of risk-off or slowing growth. Falling: industrial demand and risk appetite picking up.",
+  },
+  {
+    symbol: "CAPITALCOM:COPPER/TVC:GOLD",
+    title: "Copper / gold",
+    note: "Growth signal; often tracks bond yields",
+    explain: "Copper follows industrial activity, gold follows fear and real rates. Rising: markets pricing stronger global growth; it often moves with 10-year Treasury yields.",
+  },
+  {
+    symbol: "TVC:UKOIL/FX:GBPUSD",
+    title: "Brent in sterling",
+    note: "£ per barrel",
+    explain: "Oil priced in pounds: what UK petrol, energy bills and inflation actually feel. A weaker pound pushes it up even when dollar oil prices are flat.",
+  },
 ];
 
 export default async function CommoditiesPage() {
@@ -105,12 +120,20 @@ export default async function CommoditiesPage() {
         <div className="grid gap-4 lg:grid-cols-2">
           <Card title="Brent − WTI spread" subtitle="$/bbl, daily spot (EIA). Widens when seaborne crude tightens relative to US supply.">
             <SeriesChart series={[{ key: "s", name: "Brent − WTI", color: "var(--series-1)", points: spread }]} xKind="date" unit="price" height={260} showLegend={false} />
+            <p className="mt-2 text-xs leading-relaxed text-ink-2">
+              The premium of international (Brent) over US (WTI) crude. It widens with Middle East or Russia supply risk and
+              shipping costs, and narrows when US output or export capacity is tight.
+            </p>
           </Card>
           <Card
             title="US crude stocks"
             subtitle={`Commercial, excl. SPR, million barrels (EIA weekly).${lastWeek ? ` Latest week ${lastWeek[1] > 0 ? "+" : ""}${lastWeek[1].toFixed(1)}m bbl.` : ""}`}
           >
             <SeriesChart series={[{ key: "s", name: "Crude stocks", color: "var(--series-2)", points: stocks }]} xKind="date" unit="price" height={260} showLegend={false} />
+            <p className="mt-2 text-xs leading-relaxed text-ink-2">
+              Oil held in US commercial storage, reported every Wednesday. Bigger-than-expected builds weigh on prices; draws
+              signal tight supply. Stocks usually build in spring and draw in summer driving season.
+            </p>
           </Card>
         </div>
         <Card title="By sector" subtitle="Live quotes, today. Click one for its chart." exportable={false}>
@@ -145,7 +168,8 @@ export default async function CommoditiesPage() {
           }
         />
         <section>
-          <h2 className="mb-2 text-sm font-semibold text-ink">Ratios</h2>
+          <h2 className="text-sm font-semibold text-ink">Ratios</h2>
+          <p className="mb-2 text-xs text-muted">One price divided by another over the past year: a rising line means the first is outperforming.</p>
           <div className="grid gap-4 md:grid-cols-3">
             {RATIOS.map((c) => (
               <section key={c.symbol} className="card p-4">
@@ -180,6 +204,7 @@ export default async function CommoditiesPage() {
                     support_host: "https://www.tradingview.com",
                   }}
                 />
+                <p className="mt-2 text-xs leading-relaxed text-ink-2">{c.explain}</p>
               </section>
             ))}
           </div>

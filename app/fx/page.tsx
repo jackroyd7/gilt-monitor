@@ -122,6 +122,10 @@ export default async function FxPage() {
               </table>
               <div className="mt-3">
                 <SeriesChart series={volChart} xKind="date" unit="pct" height={180} />
+                <p className="mt-2 text-xs leading-relaxed text-ink-2">
+                  How much the pair has actually been moving, as an annual %. Rising volatility often comes with sterling
+                  stress or big data and policy surprises; it also makes hedging and carry trades more costly.
+                </p>
               </div>
             </Card>
             <Card title="Carry: government yield gap" subtitle="UK minus US / German government yields (semi-annual basis). Positive = sterling earns more." exportable={false}>
@@ -143,6 +147,10 @@ export default async function FxPage() {
                   ))}
                 </tbody>
               </table>
+              <p className="mt-2 text-xs leading-relaxed text-ink-2">
+                Roughly what you earn per year for holding sterling instead of dollars or euros. A wider positive gap supports
+                the pound; a narrowing gap (UK rates falling faster) tends to weigh on it.
+              </p>
             </Card>
           </div>
         </div>
@@ -174,9 +182,14 @@ export default async function FxPage() {
         <div className="grid gap-4 lg:grid-cols-2">
           <Card title="Cross rates" subtitle="Live, from TradingView. Click a rate for its chart." exportable={false}>
             <TradingViewWidget widget="forex-cross-rates" height={400} chartPath="/charts" lazy config={{ width: "100%", height: 400, currencies: CURRENCIES }} />
+            <p className="mt-2 text-xs leading-relaxed text-ink-2">Each cell is one unit of the row currency priced in the column currency.</p>
           </Card>
           <Card title="Currency strength" subtitle="Each cell is the row currency's move against the column currency today." exportable={false}>
             <TradingViewWidget widget="forex-heat-map" height={400} chartPath="/charts" lazy config={{ width: "100%", height: 400, currencies: CURRENCIES }} />
+            <p className="mt-2 text-xs leading-relaxed text-ink-2">
+              Green: the row currency has risen against that column today; red: fallen. A row that is mostly green is today&apos;s
+              strongest currency.
+            </p>
           </Card>
         </div>
         <Card title="FX news" exportable={false}>
