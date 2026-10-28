@@ -4,7 +4,7 @@ import { PageHeader } from "@/components/Tiles";
 import { NEWS_TOPICS } from "@/config/news";
 import { getNews } from "@/lib/news-fetch";
 
-export const metadata = { title: "News · Gilt Monitor" };
+export const metadata = { title: "News · Markets Monitor" };
 
 export default async function NewsPage() {
   await connection(); // fetch (or reuse the 10-minute cache) on each visit

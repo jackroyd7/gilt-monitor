@@ -1,6 +1,5 @@
 "use client";
 
-import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { DEFAULT_CHART_SYMBOL, MARKET_GROUPS, TICKER_TAPE, symbolName, type MarketSymbol } from "@/config/markets";
 import { addCard, defaultLayout, layoutForStorage, moveCard, removeCard, sanitizeLayout, type MarketLayout } from "@/lib/market-layout";
@@ -13,7 +12,7 @@ import TradingViewWidget from "./TradingViewWidget";
 // iframe), so the ticker tape links back to /markets?tvwidgetsymbol=... and this page
 // opens the chart popup for that symbol. Each benchmark card has a transparent button
 // over it that opens the popup directly.
-const CHART_PATH = "/markets";
+const CHART_PATH = "/charts";
 const LAYOUT_KEY = "gilt-monitor:markets-layout:v1";
 const CUSTOM = "__custom__";
 const WIDGET_H = 78; // natural height of a one-symbol TradingView tickers widget
@@ -116,9 +115,23 @@ function MarketCard({
   );
 }
 
-export default function MarketsBoard({ initialSymbol }: { initialSymbol?: string }) {
-  const router = useRouter();
-  const [symbol, setSymbol] = useState<string | null>(initialSymbol ?? null);
+/** The scrolling ticker tape; clicking a quote opens it on the Charts tab. */
+export function TickerTape() {
+  return (
+    <div className="card mb-4 overflow-hidden">
+      <TradingViewWidget
+        widget="ticker-tape"
+        height={46}
+        chartPath={CHART_PATH}
+        config={{ symbols: TICKER_TAPE.map((s) => ({ proName: s.symbol, title: s.name })), showSymbolLogo: false, displayMode: "adaptive" }}
+      />
+    </div>
+  );
+}
+
+/** Editable benchmark cards for the given asset classes (all of them if omitted). */
+export default function MarketsBoard({ groups }: { groups?: string[] }) {
+  const [symbol, setSymbol] = useState<string | null>(null);
   const watchlist = MARKET_GROUPS.flatMap((g) => [...g.symbols, ...g.more].map((s) => s.symbol));
   const [layout, setLayout] = useState<MarketLayout>(defaultLayout);
   const [editing, setEditing] = useState(false);
@@ -209,21 +222,11 @@ export default function MarketsBoard({ initialSymbol }: { initialSymbol?: string
     return () => window.removeEventListener("resize", fit);
   }, []);
 
-  const close = () => {
-    setSymbol(null);
-    if (initialSymbol) router.replace("/markets", { scroll: false });
-  };
+  const close = () => setSymbol(null);
+  const shownGroups = MARKET_GROUPS.filter((g) => !groups || groups.includes(g.title));
 
   return (
     <>
-      <div className="card mb-4 overflow-hidden">
-        <TradingViewWidget
-          widget="ticker-tape"
-          height={46}
-          chartPath={CHART_PATH}
-          config={{ symbols: TICKER_TAPE.map((s) => ({ proName: s.symbol, title: s.name })), showSymbolLogo: false, displayMode: "adaptive" }}
-        />
-      </div>
       <div className="space-y-4">
         <div className="flex flex-wrap items-center justify-end gap-2 text-xs">
           {editing && (
@@ -251,7 +254,7 @@ export default function MarketsBoard({ initialSymbol }: { initialSymbol?: string
             {editing ? "Done" : "Edit layout"}
           </button>
         </div>
-        {MARKET_GROUPS.map((g) => {
+        {shownGroups.map((g) => {
           const cards = layout[g.title] ?? [];
           const shown = new Set(cards.map((c) => c.symbol));
           const options = editing ? [...g.symbols, ...g.more].filter((s) => !shown.has(s.symbol)) : g.more;

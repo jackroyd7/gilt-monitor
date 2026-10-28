@@ -16,7 +16,13 @@ function useDarkMode() {
     read();
     const mq = window.matchMedia("(prefers-color-scheme: dark)");
     mq.addEventListener("change", read);
-    return () => mq.removeEventListener("change", read);
+    // The theme switch changes data-theme on <html>; follow it.
+    const obs = new MutationObserver(read);
+    obs.observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
+    return () => {
+      mq.removeEventListener("change", read);
+      obs.disconnect();
+    };
   }, []);
   return dark;
 }

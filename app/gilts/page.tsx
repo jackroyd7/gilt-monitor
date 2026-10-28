@@ -1,71 +1,95 @@
 import { connection } from "next/server";
-import GiltMonitor, { type MonitorRow } from "@/components/GiltMonitor";
+import { SeriesChart, type Series } from "@/components/charts";
 import LiveBar from "@/components/LiveBar";
-import { PageHeader } from "@/components/Tiles";
-import { giltRows } from "@/lib/analytics";
+import { Card, PageHeader, TileGrid } from "@/components/Tiles";
+import {
+  comparisonDates,
+  curveOnDates,
+  fittedMoves,
+  headlineMetrics,
+  metricSeries,
+  rateMetric,
+  spreadMetric,
+  tile,
+} from "@/lib/analytics";
+import { latestDate } from "@/lib/curve";
 import { loadMarketWithLive } from "@/lib/data";
-import { nsValue, type NelsonSiegel } from "@/lib/fit";
-import { giltSeries, londonNow, yieldChanges } from "@/lib/history";
 import { liveInfo } from "@/lib/live";
 
-function fitLine(fit: NelsonSiegel | null, from: number, to: number) {
-  if (!fit || to <= from) return [];
-  return Array.from({ length: 80 }, (_, i) => from + (i * (to - from)) / 79).map((t) => ({ t, y: nsValue(fit, t) }));
-}
+export default async function Dashboard() {
+  await connection();
+  const { curves: c, gilts, dmoGilts, live } = await loadMarketWithLive();
+  const moves = live?.gilts.length ? fittedMoves(gilts, dmoGilts, c, [2, 5, 10, 30]) : [];
+  const tiles = headlineMetrics(c).map(tile);
+  const asOf = latestDate(c.uk_nominal);
 
-export default async function GiltsPage() {
-  await connection(); // render per request so intraday prices are current
-  const { curves, gilts, live, history: hist } = await loadMarketWithLive();
-  const { rows, fit, realFit, asOf } = giltRows(gilts, curves);
-  const liveDate = live?.gilts.length ? londonNow(new Date(live.fetchedAt)).date : undefined;
+  const cmp = comparisonDates(c.uk_nominal, ["0", "1m"]);
+  const curveSeries: Series[] = curveOnDates(c.uk_nominal, cmp.map((d) => d.date)).map((s, i) => ({
+    key: cmp[i].key,
+    name: `${cmp[i].label}${s.date ? ` (${s.date})` : ""}`,
+    color: i === 0 ? "var(--series-1)" : "var(--series-2)",
+    dashed: i > 0,
+    points: s.points.map((p) => [p.t, p.v]),
+  }));
 
-  const monitor: MonitorRow[] = rows
-    .filter((r): r is typeof r & { type: MonitorRow["type"] } => r.type === "conventional" || r.type === "index-linked")
-    .map((r) => {
-      const series = giltSeries(hist, r.isin);
-      // The date the current yield belongs to: today if intraday, else its close date.
-      const date = (r.live && liveDate) || r.priceDate || gilts?.priceDate || series[series.length - 1]?.[0] || asOf || "";
-      const ch = yieldChanges(series, { date, yield: r.yield });
-      return {
-        isin: r.isin,
-        name: r.name,
-        type: r.type,
-        maturity: r.maturity,
-        years: r.years,
-        cleanPrice: r.cleanPrice,
-        yield: r.yield,
-        yieldComputed: r.yieldComputed,
-        oisSpread: r.oisSpread,
-        richCheap: r.richCheap,
-        bei: r.bei,
-        modDuration: r.modDuration,
-        live: r.live,
-        outlier: r.outlier,
-        ...ch,
-      };
-    });
+  const tenYears: Series[] = [
+    { key: "uk", name: "Gilt", color: "var(--series-1)", m: rateMetric(c, "uk_nominal", 10, "") },
+    { key: "de", name: "Bund", color: "var(--series-2)", m: rateMetric(c, "de_bund", 10, "") },
+    { key: "us", name: "UST", color: "var(--series-3)", m: rateMetric(c, "us_ust", 10, "") },
+  ].map(({ m, ...s }) => ({ ...s, points: metricSeries(m) }));
 
-  // Draw each fit only across the maturities it was fitted to.
-  const span = (type: string, minYears: number) => {
-    const ts = rows.filter((r) => r.type === type && r.yield != null && r.years > minYears).map((r) => r.years);
-    return ts.length ? [Math.min(...ts), Math.max(...ts)] : [0, 0];
-  };
+  const oisSpreads: Series[] = [
+    { key: "2", name: "2y", color: "var(--series-1)", t: 2 },
+    { key: "5", name: "5y", color: "var(--series-2)", t: 5 },
+    { key: "10", name: "10y", color: "var(--series-3)", t: 10 },
+  ].map(({ t, ...s }) => ({ ...s, points: metricSeries(spreadMetric(c, ["uk_nominal", t], ["uk_ois", t], "")) }));
 
   return (
     <>
-      <PageHeader title={`Gilts${asOf ? ` · ${asOf}` : ""}`}>
-        Every conventional and 3-month-lag index-linked gilt. Prices are intraday from giltsyield.com where available,
-        otherwise the latest close. Tick up to two gilts (or click points on the chart) to plot their yield or price
-        history, or the yield spread between them.
+      <PageHeader title={`UK gilts${asOf ? ` · ${asOf}` : ""}`}>
+        Headline levels and moves. Changes are in basis points; ▲ means yields (or the spread) rose.
       </PageHeader>
-      <LiveBar live={liveInfo(live)} />
-      <GiltMonitor
-        rows={monitor}
-        fits={{
-          conventional: fitLine(fit, ...(span("conventional", 0.5) as [number, number])),
-          "index-linked": fitLine(realFit, ...(span("index-linked", 1.5) as [number, number])),
-        }}
-      />
+      {live && (
+        <>
+          <LiveBar live={liveInfo(live)} />
+          {moves.some((m) => m.now != null) && (
+            <div className="mb-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
+              {moves.map((m) => (
+                <div key={m.t} className="card p-3">
+                  <div className="text-xs text-ink-2">Gilt {m.t}y · intraday fit</div>
+                  <div className="mt-1 text-2xl font-semibold text-ink">{m.now == null ? "–" : `${m.now.toFixed(2)}%`}</div>
+                  <div className="num mt-0.5 text-xs text-ink-2">
+                    vs last close {m.chg == null ? "–" : `${m.chg > 0 ? "▲" : m.chg < 0 ? "▼" : ""}${Math.abs(m.chg).toFixed(1)}bp`}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </>
+      )}
+      <TileGrid tiles={tiles} />
+      <div className="mt-4 grid gap-4 lg:grid-cols-2">
+        <Card title="Gilt nominal zero curve" subtitle="BoE fitted spot curve, latest vs a month earlier">
+          <SeriesChart series={curveSeries} xKind="tenor" unit="pct" />
+        </Card>
+        <Card title="10-year yields" subtitle="Gilt vs Bund vs US Treasury">
+          <SeriesChart series={tenYears} xKind="date" unit="pct" />
+        </Card>
+        <Card title="Gilt − SONIA OIS" subtitle="Matched-maturity spread on BoE zero curves; negative = gilts yield below swaps">
+          <SeriesChart series={oisSpreads} xKind="date" unit="bp" />
+        </Card>
+        <Card title="Curve slopes" subtitle="Gilt nominal zero curve">
+          <SeriesChart
+            series={[
+              { key: "2s10s", name: "2s10s", color: "var(--series-1)", points: metricSeries(spreadMetric(c, ["uk_nominal", 10], ["uk_nominal", 2], "")) },
+              { key: "5s30s", name: "5s30s", color: "var(--series-2)", points: metricSeries(spreadMetric(c, ["uk_nominal", 30], ["uk_nominal", 5], "")) },
+              { key: "10s30s", name: "10s30s", color: "var(--series-3)", points: metricSeries(spreadMetric(c, ["uk_nominal", 30], ["uk_nominal", 10], "")) },
+            ]}
+            xKind="date"
+            unit="bp"
+          />
+        </Card>
+      </div>
     </>
   );
 }

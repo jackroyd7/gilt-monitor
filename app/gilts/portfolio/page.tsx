@@ -63,7 +63,7 @@ async function settle<T>(p: Promise<T>): Promise<{ ok: true; value: T } | { ok: 
   }
 }
 
-export default async function PortfolioPage({ searchParams }: PageProps<"/portfolio">) {
+export default async function PortfolioPage({ searchParams }: PageProps<"/gilts/portfolio">) {
   await connection(); // read the API key at request time, never at build time
 
   if (!giltsYieldConfigured()) {
@@ -132,7 +132,7 @@ export default async function PortfolioPage({ searchParams }: PageProps<"/portfo
           {portfolios.map((x) => (
             <Link
               key={x.id}
-              href={`/portfolio?p=${encodeURIComponent(x.id)}`}
+              href={`/gilts/portfolio?p=${encodeURIComponent(x.id)}`}
               className={`rounded-full border border-line px-2.5 py-0.5 ${x.id === selected.id ? "bg-surface-2 text-ink" : "text-ink-2"}`}
             >
               {x.name}

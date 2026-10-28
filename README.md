@@ -1,6 +1,9 @@
-# Gilt Monitor
+# Markets Monitor
 
-A self-updating dashboard for UK gilts:
+A self-updating markets dashboard built around UK gilts. Tabs: **Overview**, **Gilts** (a menu of Dashboard, Gilts, Curves, vs OIS, Cross-market and Portfolio), **Equities**, **FX**, **Commodities**, **Charts** and **News**. On a phone the tabs move to a bar at the bottom of the screen. A switch in the header picks a light, dark or automatic theme.
+
+- **Install as an app**: open the site in Safari on iPhone → Share → *Add to Home Screen*. It opens full-screen with its own icon. Sign in once and the device stays signed in for a year.
+- **Charts tab**: search an index, stock, currency pair, commodity or bond yield and chart it full width. Recent symbols are remembered in the browser.
 
 - **Dashboard**: headline yields, curve slopes, breakevens, gilt − OIS, gilt − Bund and gilt − UST, with 1-day and 1-week moves.
 - **Charts**: every chart card has *Copy image* and *Save PNG* buttons (title and legend included, on-screen controls left out).
@@ -9,7 +12,7 @@ A self-updating dashboard for UK gilts:
 - **vs OIS**: gilt − SONIA OIS by maturity, over time, and for each gilt (an asset-swap proxy).
 - **Cross-market**: gilts against Bunds and US Treasuries by maturity and over time.
 - **Intraday prices**: with a giltsyield.com key, gilt prices and yields refresh about every 10 minutes (their update rate), with a *Refresh prices* button. The dashboard adds 2/5/10/30y yields from a curve fitted to those prices, against the DMO close.
-- **Markets**: equity indices, FX spot and commodities as colour-coded ticker cards (TradingView's free widgets). Click **Edit layout** to add (from a list, or by searching a short catalogue of indices, bond yields, FX, commodities and ~400 large UK, US, French and German stocks, showing at most 8 suggestions), remove, or drag to reorder cards; the layout syncs across your devices when Upstash Redis is connected (Vercel → Storage), otherwise it is saved per browser. Clicking an instrument opens its chart in a popup (line chart by default; candles, intervals and indicators from the toolbar), not on tradingview.com. Symbols live in `config/markets.ts`.
+- **Equities / FX / Commodities**: equity indices, FX spot and commodities as colour-coded ticker cards (TradingView's free widgets). Click **Edit layout** to add (from a list, or by searching a short catalogue of indices, bond yields, FX, commodities and ~400 large UK, US, French and German stocks, showing at most 8 suggestions), remove, or drag to reorder cards; the layout syncs across your devices when Upstash Redis is connected (Vercel → Storage), otherwise it is saved per browser. Clicking an instrument opens its chart in a popup (line chart by default; candles, intervals and indicators from the toolbar), not on tradingview.com. Symbols live in `config/markets.ts`.
 - **News**: last week's headlines on the topics in `config/news.ts` (Google News searches plus the Bank of England feed), filterable by topic, searchable, rankable by relevance to gilts and UK rates, with muted words. Cached for 10 minutes; *Refresh* re-fetches. Clicking a headline opens a reader popup: full text for free-to-read sites (reader-mode extraction; paywalled sites are not fetched, and only public web addresses are), otherwise the headline with a link out. With `ANTHROPIC_API_KEY` set, *Market impact* asks Claude which markets the story matters for and why, on request.
 - **Portfolio**: your giltsyield.com holdings, P&L, book yields and upcoming cash flows, joined to the market data.
 
@@ -50,7 +53,7 @@ Market data history is kept in `data/curves/*.json` (5 years by default, one lin
 
 1. **Vercel**: import this repo at vercel.com/new (framework: Next.js, no build settings needed).
 2. In Vercel → Settings → Environment Variables, add:
-   - `DASHBOARD_PASSWORD`: protects the whole site (any username).
+   - `DASHBOARD_PASSWORD`: protects the whole site. You sign in on a login page; Basic auth (any username) also works for scripts.
    - `GILTSYIELD_API_KEY`: from your giltsyield.com Profile page.
 3. **GitHub secret** (recommended): repo → Settings → Secrets and variables → Actions → *New repository secret*, name `GILTSYIELD_API_KEY`. The daily job then records giltsyield.com closes for every gilt; without it, it records DMO closes.
 4. **First data load**: GitHub → Actions → *Update market data* → *Run workflow*. Tick **backfill** for about 3 years of curve history, and set **gilt_days** to backfill per-gilt closes (25 covers the 1-month change; 260 is a year, at roughly 75 giltsyield calls per day backfilled). After that it runs on its own.
