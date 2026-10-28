@@ -154,7 +154,7 @@ async function main() {
     if (!ok) throw new Error(`no quotes for any of ${total} stocks`);
     await writeFile(file, JSON.stringify(data) + "\n");
     const latest = Object.values(data.quotes).map((q) => q.time.slice(0, 10)).sort().pop();
-    return { latestDate: latest, message: `${ok}/${total} UK, European and Asian stocks` };
+    return { latestDate: latest, message: `${ok}/${total} UK, European and Asian stocks, sector ETFs and commodity futures` };
   });
 
   let dmoSnapshot: GiltSnapshot | undefined;

@@ -1,55 +1,20 @@
 import Link from "next/link";
 import { connection } from "next/server";
 import { FxTiles, Positioning, type FxTile } from "@/components/FxPanels";
+import BarRows from "@/components/BarRows";
 import HeadlineList from "@/components/HeadlineList";
 import MarketsBoard, { TickerTape } from "@/components/MarketsBoard";
 import { Card, PageHeader } from "@/components/Tiles";
 import TradingViewWidget from "@/components/TradingViewWidget";
 import { SeriesChart } from "@/components/charts";
-import { COMMODITY_COT, COMMODITY_SERIES } from "@/lib/commodities";
+import { COMMODITY_COT, COMMODITY_SECTORS, COMMODITY_SERIES } from "@/lib/commodities";
 import { cotRowsFor } from "@/lib/cot-view";
 import { addDays } from "@/lib/curve";
-import { loadCommodities } from "@/lib/data";
+import { loadCommodities, loadStockQuotes } from "@/lib/data";
 import { pctChange, type Point } from "@/lib/fx";
 import { getNews } from "@/lib/news-fetch";
 
 export const metadata = { title: "Commodities · Markets Monitor" };
-
-// Live quotes by sector (TradingView). CFD feeds stand in where exchange futures aren't
-// licensed for free widgets.
-const SECTORS = [
-  {
-    name: "Energy",
-    symbols: [
-      { name: "TVC:UKOIL", displayName: "Brent crude" },
-      { name: "TVC:USOIL", displayName: "WTI crude" },
-      { name: "CAPITALCOM:NATURALGAS", displayName: "US natural gas" },
-      { name: "CAPITALCOM:GASOLINE", displayName: "Gasoline" },
-      { name: "CAPITALCOM:HEATINGOIL", displayName: "Heating oil" },
-    ],
-  },
-  {
-    name: "Metals",
-    symbols: [
-      { name: "TVC:GOLD", displayName: "Gold" },
-      { name: "TVC:SILVER", displayName: "Silver" },
-      { name: "TVC:PLATINUM", displayName: "Platinum" },
-      { name: "CAPITALCOM:COPPER", displayName: "Copper" },
-      { name: "CAPITALCOM:ALUMINUM", displayName: "Aluminium" },
-    ],
-  },
-  {
-    name: "Agriculture",
-    symbols: [
-      { name: "CAPITALCOM:WHEAT", displayName: "Wheat" },
-      { name: "CAPITALCOM:CORN", displayName: "Corn" },
-      { name: "CAPITALCOM:SOYBEANS", displayName: "Soybeans" },
-      { name: "CAPITALCOM:COFFEEARABICA", displayName: "Coffee" },
-      { name: "CAPITALCOM:SUGAR", displayName: "Sugar" },
-      { name: "CAPITALCOM:COCOA", displayName: "Cocoa" },
-    ],
-  },
-];
 
 const RATIOS = [
   {
@@ -74,7 +39,7 @@ const RATIOS = [
 
 export default async function CommoditiesPage() {
   await connection();
-  const [data, news] = await Promise.all([loadCommodities(), getNews()]);
+  const [data, news, quotes] = await Promise.all([loadCommodities(), getNews(), loadStockQuotes()]);
   const series = (id: (typeof COMMODITY_SERIES)[number]["id"]): Point[] => (data?.prices[id] ?? []) as Point[];
 
   const tiles: FxTile[] = COMMODITY_SERIES.map((s) => {
@@ -105,6 +70,19 @@ export default async function CommoditiesPage() {
   const lastWeek = weekly[weekly.length - 1];
 
   const cotRows = cotRowsFor(COMMODITY_COT, data?.cot);
+  // "By sector": futures quotes fetched by the data job.
+  const sectorGroups = COMMODITY_SECTORS.map((g) => ({
+    title: g.sector,
+    rows: g.items.flatMap(([y, label]) => {
+      const q = quotes?.quotes[`YF:${y}`];
+      return q ? [{ label, change: q.change, detail: q.price.toFixed(2) }] : [];
+    }),
+  }));
+  const lastQuote = COMMODITY_SECTORS.flatMap((g) => g.items.map(([y]) => quotes?.quotes[`YF:${y}`]?.time ?? "")).sort().pop();
+  const sectorAsOf = lastQuote
+    ? new Date(lastQuote).toLocaleString("en-GB", { timeZone: "Europe/London", weekday: "short", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })
+    : null;
+
   const commodityNews = news.items.filter((i) => i.topics.includes("commodities")).slice(0, 10);
 
   return (
@@ -136,8 +114,11 @@ export default async function CommoditiesPage() {
             </p>
           </Card>
         </div>
-        <Card title="By sector" subtitle="Live quotes, today. Click one for its chart." exportable={false}>
-          <TradingViewWidget widget="market-quotes" height={440} chartPath="/charts" lazy config={{ width: "100%", height: 440, symbolsGroups: SECTORS, showSymbolLogo: false }} />
+        <Card
+          title="By sector"
+          subtitle={`Front-month futures, % change on the previous close${sectorAsOf ? ` (as of ${sectorAsOf} UK, delayed)` : ""}.`}
+        >
+          <BarRows groups={sectorGroups} />
         </Card>
         <Positioning
           rows={cotRows}

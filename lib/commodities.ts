@@ -12,6 +12,13 @@ export const COMMODITY_SERIES = [
 ] as const;
 export type CommodityId = (typeof COMMODITY_SERIES)[number]["id"];
 
+/** Futures for the "By sector" table, as Yahoo Finance symbols (quotes stored under "YF:<symbol>"). */
+export const COMMODITY_SECTORS: { sector: string; items: [string, string][] }[] = [
+  { sector: "Energy", items: [["BZ=F", "Brent crude"], ["CL=F", "WTI crude"], ["NG=F", "US natural gas"], ["RB=F", "Gasoline"], ["HO=F", "Heating oil"]] },
+  { sector: "Metals", items: [["GC=F", "Gold"], ["SI=F", "Silver"], ["PL=F", "Platinum"], ["PA=F", "Palladium"], ["HG=F", "Copper"], ["ALI=F", "Aluminium"]] },
+  { sector: "Agriculture", items: [["ZW=F", "Wheat"], ["ZC=F", "Corn"], ["ZS=F", "Soybeans"], ["KC=F", "Coffee"], ["SB=F", "Sugar"], ["CC=F", "Cocoa"]] },
+];
+
 export const COMMODITY_COT = [
   { id: "CRUDE", code: "067651", name: "WTI crude" },
   { id: "NATGAS", code: "023651", name: "Natural gas" },

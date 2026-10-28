@@ -1,4 +1,5 @@
 import { SECTOR_GROUPS } from "../../config/equities";
+import { COMMODITY_SECTORS } from "../../lib/commodities";
 import { STOCKS } from "../../config/stock-catalogue";
 import { parseYahooChart, yahooSymbol, type StockQuotes } from "../../lib/stocks";
 import { getText } from "./http";
@@ -11,14 +12,16 @@ export async function fetchStockQuotes(previous: StockQuotes | undefined) {
   const quotes: StockQuotes["quotes"] = { ...(previous?.quotes ?? {}) };
   // Plus the US and European sector ETFs for the sector-performance table.
   const etfs = SECTOR_GROUPS.flatMap((g) => g.symbols.map((x) => ({ symbol: x.name, name: x.displayName, group: g.name })));
-  const list = [...STOCKS.filter((s) => GROUPS.has(s.group)), ...etfs];
+  // And commodity futures for the Commodities "By sector" table (already Yahoo symbols).
+  const futures = COMMODITY_SECTORS.flatMap((g) => g.items.map(([y, name]) => ({ symbol: `YF:${y}`, name, group: g.sector })));
+  const list = [...STOCKS.filter((s) => GROUPS.has(s.group)), ...etfs, ...futures];
   const failed: string[] = [];
   let next = 0;
   await Promise.all(
     Array.from({ length: 4 }, async () => {
       while (next < list.length) {
         const s = list[next++];
-        const y = yahooSymbol(s.symbol);
+        const y = s.symbol.startsWith("YF:") ? s.symbol.slice(3) : yahooSymbol(s.symbol);
         if (!y) continue;
         try {
           const q = parseYahooChart(JSON.parse(await getText(`https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(y)}?range=5d&interval=1d`, "application/json")));
