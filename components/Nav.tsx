@@ -19,6 +19,7 @@ const MARKET_TABS = [
   { href: "/equities", label: "Equities" },
   { href: "/fx", label: "FX" },
   { href: "/commodities", label: "Commodities" },
+  { href: "/economy", label: "Economy" },
 ];
 
 const isActive = (path: string, href: string) =>

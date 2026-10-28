@@ -1,6 +1,7 @@
 // Economics tab: which series to show. Each indicator row has one series per economy.
 // Sources (all free, no key): ONS (UK), FRED's public CSV downloads (US and OECD/Eurostat
-// series for other economies), the BoE database (Bank Rate) and the IMF World Economic Outlook.
+// series for other economies), the ECB data portal, the BoE database (Bank Rate) and the
+// IMF World Economic Outlook.
 
 export const ECONOMIES = [
   { id: "UK", name: "UK" },
@@ -20,11 +21,13 @@ export type Transform =
   | "diff"; // change on the previous period (e.g. payrolls, thousands)
 
 export interface SeriesSpec {
-  source: "ons" | "fred" | "boe";
-  /** ONS: "path/cdid/dataset"; FRED: series id; BoE: series code. */
+  source: "ons" | "fred" | "boe" | "ecb";
+  /** ONS: "path/cdid/dataset"; FRED: series id; BoE: series code; ECB: "FLOW/KEY". */
   id: string;
   transform: Transform;
   note?: string;
+  /** Multiply published values by this (e.g. -0.001 turns ONS £m net lending into £bn borrowing). */
+  scale?: number;
 }
 
 export interface Indicator {
@@ -41,6 +44,7 @@ const ons = (path: string, cdid: string, dataset: string, transform: Transform =
   transform,
   note,
 });
+const ecb = (id: string, note?: string): SeriesSpec => ({ source: "ecb", id, transform: "level", note });
 const fred = (id: string, transform: Transform = "level", note?: string): SeriesSpec => ({ source: "fred", id, transform, note });
 
 const INFL = "economy/inflationandpriceindices";
@@ -82,7 +86,7 @@ export const INDICATORS: Indicator[] = [
     label: "Monthly GDP, % m/m",
     group: "Growth",
     unit: "%",
-    series: { UK: ons(GDP, "ecy2", "mgdp") },
+    series: { UK: ons(GDP, "ecy2", "mgdp", "pop", "GVA, monthly") },
   },
   {
     id: "cpi",
@@ -95,7 +99,6 @@ export const INDICATORS: Indicator[] = [
       EA: fred("CP0000EZ19M086NEST", "yoy", "HICP"),
       DE: fred("CP0000DEM086NEST", "yoy", "HICP"),
       FR: fred("CP0000FRM086NEST", "yoy", "HICP"),
-      JP: fred("JPNCPIALLMINMEI", "yoy"),
     },
   },
   {
@@ -106,7 +109,7 @@ export const INDICATORS: Indicator[] = [
     series: {
       UK: ons(INFL, "dko8", "mm23", "level", "CPI excl. energy, food, alcohol & tobacco"),
       US: fred("CPILFESL", "yoy", "CPI excl. food & energy"),
-      EA: fred("CPHPLA01EZM661N", "yoy", "HICP excl. energy & unprocessed food"),
+      EA: ecb("ICP/M.U2.N.XEF000.4.ANR", "HICP excl. energy, food, alcohol & tobacco"),
     },
   },
   {
@@ -127,7 +130,7 @@ export const INDICATORS: Indicator[] = [
     series: {
       UK: ons(`${LAB}/peoplenotinwork/unemployment`, "mgsx", "lms"),
       US: fred("UNRATE"),
-      EA: fred("LRHUTTTTEZM156S"),
+      EA: ecb("LFSI/M.I9.S.UNEHRT.TOTAL0.15_74.T"),
       DE: fred("LRHUTTTTDEM156S"),
       FR: fred("LRHUTTTTFRM156S"),
       JP: fred("LRHUTTTTJPM156S"),
@@ -173,7 +176,7 @@ export const INDICATORS: Indicator[] = [
     label: "Public sector borrowing, month (£bn)",
     group: "Public finances",
     unit: "£bn",
-    series: { UK: ons(PSF, "j5ii", "pusf", "level", "PSNB excl. public sector banks") },
+    series: { UK: { ...ons(PSF, "j5ii", "pusf", "level", "PSNB excl. public sector banks"), scale: -0.001 } },
   },
 ];
 

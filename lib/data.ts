@@ -2,6 +2,7 @@ import "server-only";
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 import type { CotHistory, FxHistory } from "./fx";
+import type { MacroData } from "./macro";
 import { withLatestCloses } from "./history";
 import { getLive, withLive, type LiveSnapshot } from "./live";
 import type { CurveId, CurveSet, DataStatus, GiltHistory, GiltSnapshot } from "./types";
@@ -35,6 +36,11 @@ export async function loadGiltHistory(): Promise<GiltHistory | undefined> {
 export async function loadFx(): Promise<{ fx: FxHistory | undefined; cot: CotHistory | undefined }> {
   const [fx, cot] = await Promise.all([readJson<FxHistory>(path.join(dataDir(), "fx.json")), readJson<CotHistory>(path.join(dataDir(), "cot.json"))]);
   return { fx, cot };
+}
+
+/** Economic indicators written by the data job. */
+export async function loadMacro(): Promise<MacroData | undefined> {
+  return readJson<MacroData>(path.join(dataDir(), "macro.json"));
 }
 
 /** Reads everything the daily job wrote. DATA_DIR lets you point at demo data locally. */

@@ -68,6 +68,21 @@ export function parseFredCsv(csv: string): Point[] {
   });
 }
 
+/** ECB data portal CSV (format=csvdata): TIME_PERIOD and OBS_VALUE columns. */
+export function parseEcbCsv(csv: string): Point[] {
+  const lines = csv.trim().split(/\r?\n/).map((l) => l.split(","));
+  const h = lines[0] ?? [];
+  const ti = h.indexOf("TIME_PERIOD");
+  const vi = h.indexOf("OBS_VALUE");
+  if (ti < 0 || vi < 0) throw new Error("Unexpected ECB CSV header");
+  return lines.slice(1).flatMap((l) => {
+    const t = l[ti];
+    const v = Number(l[vi]);
+    const d = /^\d{4}-\d{2}$/.test(t) ? `${t}-01` : /^\d{4}-Q[1-4]$/.test(t) ? `${t.slice(0, 4)}-${String((Number(t[6]) - 1) * 3 + 1).padStart(2, "0")}-01` : null;
+    return d && l[vi] !== "" && Number.isFinite(v) ? [[d, v] as Point] : [];
+  });
+}
+
 /** Infers frequency from the typical gap between observations. */
 export function inferFreq(points: Point[]): Freq {
   if (points.length < 3) return "M";

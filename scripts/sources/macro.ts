@@ -1,6 +1,6 @@
 import { IMF_ECONOMIES, IMF_INDICATORS, INDICATORS, type SeriesSpec } from "../../config/macro";
 import { parseIadbCsv } from "../../lib/fx";
-import { inferFreq, monthlyLast, parseFredCsv, parseImf, parseOns, transform, type MacroData, type MacroSeries, type Point } from "../../lib/macro";
+import { inferFreq, monthlyLast, parseEcbCsv, parseFredCsv, parseImf, parseOns, transform, type MacroData, type MacroSeries, type Point } from "../../lib/macro";
 import { getText } from "./http";
 
 const SINCE = "2012-01-01";
@@ -15,6 +15,11 @@ async function download(spec: SeriesSpec): Promise<{ title: string; source: stri
   if (spec.source === "fred") {
     const csv = await getText(`https://fred.stlouisfed.org/graph/fredgraph.csv?id=${spec.id}&cosd=${SINCE}`, "text/csv");
     return { title: spec.id, source: `FRED ${spec.id}`, points: parseFredCsv(csv) };
+  }
+  if (spec.source === "ecb") {
+    const [flow, key] = spec.id.split("/");
+    const csv = await getText(`https://data-api.ecb.europa.eu/service/data/${flow}/${key}?format=csvdata&startPeriod=${SINCE.slice(0, 7)}`, "text/csv");
+    return { title: spec.id, source: `ECB ${flow}`, points: parseEcbCsv(csv) };
   }
   const from = `01/${MON[0]}/${SINCE.slice(0, 4)}`;
   const url = `https://www.bankofengland.co.uk/boeapps/database/_iadb-fromshowcolumns.asp?csv.x=yes&Datefrom=${from}&Dateto=now&SeriesCodes=${spec.id}&CSVF=TN&UsingCodes=Y&VPD=Y&VFD=N`;
@@ -31,7 +36,9 @@ async function download(spec: SeriesSpec): Promise<{ title: string; source: stri
  * transform and keeps ~12 years. A failed series keeps its previous data.
  */
 export async function fetchMacro(previous?: MacroData): Promise<{ data: MacroData; failures: string[] }> {
-  const series: Record<string, MacroSeries> = { ...(previous?.series ?? {}) };
+  // Start from the previous file, minus indicators no longer configured.
+  const wanted = new Set(INDICATORS.flatMap((i) => Object.keys(i.series).map((e) => `${i.id}.${e}`)));
+  const series: Record<string, MacroSeries> = Object.fromEntries(Object.entries(previous?.series ?? {}).filter(([k]) => wanted.has(k)));
   const failures: string[] = [];
   const jobs = INDICATORS.flatMap((ind) => Object.entries(ind.series).map(([eco, spec]) => ({ key: `${ind.id}.${eco}`, spec: spec! })));
   const cache = new Map<string, Promise<Awaited<ReturnType<typeof download>>>>();
@@ -45,7 +52,7 @@ export async function fetchMacro(previous?: MacroData): Promise<{ data: MacroDat
           const id = `${spec.source}:${spec.id}`;
           if (!cache.has(id)) cache.set(id, download(spec));
           const raw = await cache.get(id)!;
-          let pts = raw.points.filter(([d]) => d >= SINCE);
+          let pts = raw.points.filter(([d]) => d >= SINCE).map(([d, v]) => [d, v * (spec.scale ?? 1)] as Point);
           let freq = inferFreq(pts);
           if (freq === "D") {
             pts = monthlyLast(pts);

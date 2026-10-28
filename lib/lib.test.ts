@@ -528,3 +528,10 @@ test("FRED CSV, frequency and transforms", () => {
 test("IMF DataMapper values", () => {
   assert.deepEqual(parseImf({ values: { NGDP_RPCH: { GBR: { "2024": 1.1, "2025": null } } } }), { NGDP_RPCH: { GBR: { "2024": 1.1 } } });
 });
+
+import { parseEcbCsv } from "./macro";
+
+test("ECB CSV", () => {
+  const csv = "KEY,FREQ,REF_AREA,TIME_PERIOD,OBS_VALUE,OBS_STATUS\nICP.M.U2.N.XEF000.4.ANR,M,U2,2026-08,2.3,A\nICP.M.U2.N.XEF000.4.ANR,M,U2,2026-09,2.4,A\n";
+  assert.deepEqual(parseEcbCsv(csv), [["2026-08-01", 2.3], ["2026-09-01", 2.4]]);
+});

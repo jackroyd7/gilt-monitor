@@ -149,8 +149,52 @@ function demoFx() {
   return { fx: { source: "DEMO", series: ["GBPUSD", "GBPEUR", "GBPJPY", "GBPCHF", "ERI"], rows }, cot: { source: "DEMO", rows: cot } };
 }
 
+// Economic indicators: monthly / quarterly random walks around plausible levels.
+function demoMacro() {
+  const months: string[] = [];
+  for (let y = 2016; y <= Number(end.slice(0, 4)); y++) for (let m = 1; m <= 12; m++) {
+    const d = `${y}-${String(m).padStart(2, "0")}-01`;
+    if (d <= end) months.push(d);
+  }
+  const series: Record<string, { title: string; source: string; freq: "M" | "Q"; points: [string, number][] }> = {};
+  const add = (key: string, start: number, vol: number, freq: "M" | "Q" = "M") => {
+    const ds = freq === "M" ? months : months.filter((d) => ["01", "04", "07", "10"].includes(d.slice(5, 7))).slice(0, -1);
+    let v = start;
+    series[key] = { title: key, source: "DEMO", freq, points: ds.map((d) => [d, +(v += vol * gauss()).toFixed(2)]) };
+  };
+  for (const [eco, base] of [["UK", 0], ["US", 0.3], ["EA", -0.2], ["DE", -0.4], ["FR", -0.1], ["JP", -0.5]] as const) {
+    add(`gdp_qoq.${eco}`, 0.3 + base / 3, 0.15, "Q");
+    add(`gdp_yoy.${eco}`, 1.2 + base, 0.3, "Q");
+    add(`cpi.${eco}`, 3 + base, 0.25);
+    add(`unemp.${eco}`, 4.5 - base, 0.08);
+  }
+  for (const eco of ["UK", "US", "EA"]) {
+    add(`core.${eco}`, 3, 0.15);
+    add(`policy.${eco}`, 4, 0.05);
+  }
+  add("rpi.UK", 4, 0.3);
+  add("rpi.US", 2.8, 0.1);
+  add("wages.UK", 5, 0.2);
+  add("wages.US", 4, 0.1);
+  add("payrolls.US", 150, 60);
+  add("gdp_mom.UK", 0.1, 0.2);
+  add("debt.UK", 96, 0.3);
+  add("psnb.UK", 12, 3);
+  const imf: Record<string, Record<string, Record<string, number>>> = {};
+  const y0 = Number(end.slice(0, 4));
+  for (const ind of ["NGDP_RPCH", "PCPIPCH", "LUR", "GGXWDG_NGDP", "GGXCNL_NGDP", "BCA_NGDPD"]) {
+    imf[ind] = {};
+    for (const c of ["GBR", "USA", "EURO", "DEU", "FRA", "JPN", "CHN"]) {
+      imf[ind][c] = {};
+      for (let y = y0 - 3; y <= y0 + 2; y++) imf[ind][c][String(y)] = +(ind === "GGXWDG_NGDP" ? 60 + rand() * 180 : ind === "LUR" ? 3 + rand() * 6 : rand() * 6 - 2).toFixed(1);
+    }
+  }
+  return { updatedAt: new Date().toISOString(), series, imf };
+}
+
 async function main() {
   await mkdir(path.join(DIR, "curves"), { recursive: true });
+  await writeFile(path.join(DIR, "macro.json"), JSON.stringify(demoMacro()));
   const { fx, cot } = demoFx();
   await writeFile(path.join(DIR, "fx.json"), JSON.stringify(fx));
   await writeFile(path.join(DIR, "cot.json"), JSON.stringify(cot));
@@ -164,7 +208,7 @@ async function main() {
   const status: DataStatus = {
     updatedAt: now,
     demo: true,
-    sources: Object.fromEntries(["boe", "bundesbank", "ust", "dmo", "boe_fx", "cftc"].map((k) => [k, { ok: true, checkedAt: now, latestDate: end, message: "demo" }])),
+    sources: Object.fromEntries(["boe", "bundesbank", "ust", "dmo", "boe_fx", "cftc", "macro"].map((k) => [k, { ok: true, checkedAt: now, latestDate: end, message: "demo" }])),
   };
   await writeFile(path.join(DIR, "status.json"), JSON.stringify(status, null, 2));
   console.log(`Wrote synthetic data for ${dates.length} days and ${gilts.length} gilts to ${DIR}`);
