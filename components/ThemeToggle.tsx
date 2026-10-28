@@ -44,7 +44,7 @@ export default function ThemeToggle() {
       className="inline-flex items-center gap-1 rounded-md border border-line px-2 py-1 text-xs text-ink-2 hover:text-ink"
     >
       <span aria-hidden>{ICON[theme]}</span>
-      <span className="hidden sm:inline lg:hidden xl:inline">{LABEL[theme]}</span>
+      <span className="hidden sm:inline">{LABEL[theme]}</span>
     </button>
   );
 }

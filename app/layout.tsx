@@ -8,7 +8,9 @@ import "./globals.css";
 export const metadata: Metadata = {
   title: "Markets Monitor",
   description: "UK gilts, curves, OIS and cross-market spreads, plus equities, FX, commodities and news.",
-  appleWebApp: { capable: true, title: "Markets", statusBarStyle: "black-translucent" },
+  // "default": iOS keeps the status bar in its own strip above the app, so nothing is drawn
+  // underneath it (black-translucent overlapped the header on iPad).
+  appleWebApp: { capable: true, title: "Markets", statusBarStyle: "default" },
 };
 
 export const viewport: Viewport = {
@@ -32,7 +34,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
           <AskBox />
           {children}
         </main>
-        <footer className="mx-auto w-full max-w-7xl px-4 pb-24 sm:px-6 lg:pb-8">
+        <footer className="mx-auto w-full max-w-7xl px-4 pb-24 sm:px-6 xl:pb-8">
           <SourceStatus />
         </footer>
       </body>
