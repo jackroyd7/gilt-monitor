@@ -105,12 +105,23 @@ export default function BriefingCard({
         }),
       );
   };
+  // Prominent when there's no briefing for today; otherwise a quiet secondary link.
+  const hasToday = briefing?.date === today;
   const writeButton = (
-    <div className="mt-2 flex flex-wrap items-center gap-2 text-sm">
+    <div
+      className={`flex flex-wrap items-center gap-2 text-sm ${hasToday ? "justify-end" : "mt-2"}`}
+    >
+      {writing.error && (
+        <span style={{ color: "var(--critical)" }}>{writing.error}</span>
+      )}
       <button
         onClick={write}
         disabled={writing.busy}
-        className="rounded-md bg-[color:var(--accent)] px-3 py-1.5 font-medium text-white disabled:opacity-60"
+        className={
+          hasToday && !writing.busy
+            ? "text-xs text-muted underline-offset-2 hover:text-ink hover:underline"
+            : "rounded-md bg-[color:var(--accent)] px-3 py-1.5 font-medium text-white disabled:opacity-60"
+        }
       >
         {writing.busy
           ? `Writing… ${elapsed}s (usually 1–2 minutes)`
@@ -118,15 +129,13 @@ export default function BriefingCard({
             ? "Write a fresh one"
             : "Write today's briefing now"}
       </button>
-      {writing.error && (
-        <span style={{ color: "var(--critical)" }}>{writing.error}</span>
-      )}
-      {!shared && (
-        <span className="text-xs text-muted">
-          Saved on this device only: connect Upstash Redis in Vercel → Storage to see briefings on all your devices.
-        </span>
-      )}
     </div>
+  );
+  const sharedNote = !shared && (
+    <p className="mt-2 text-xs text-muted">
+      Saved on this device only: connect Upstash Redis in Vercel → Storage to
+      see briefings on all your devices.
+    </p>
   );
 
   useEffect(() => {
@@ -148,6 +157,7 @@ export default function BriefingCard({
           (about 06:35 UK time), or write one now.
         </p>
         {writeButton}
+        {sharedNote}
       </section>
     );
   }
@@ -192,13 +202,17 @@ export default function BriefingCard({
             <Rich text={lead} />
           </p>
         )}
-        <button
-          onClick={() => setOpen(true)}
-          className="mt-2 inline-block text-sm font-medium text-accent"
-        >
-          Read the briefing →
-        </button>
-        {writeButton}
+        {/* Read on the left, writing a new one well away on the right. */}
+        <div className="mt-3 flex flex-wrap items-center justify-between gap-x-6 gap-y-2 border-t border-line pt-3">
+          <button
+            onClick={() => setOpen(true)}
+            className="text-sm font-medium text-accent"
+          >
+            Read the briefing →
+          </button>
+          {writeButton}
+        </div>
+        {sharedNote}
       </section>
       {open && (
         <Modal
