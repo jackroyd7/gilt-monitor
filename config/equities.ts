@@ -67,10 +67,40 @@ export const SECTOR_GROUPS = [
 // Volatility and style: a rising line means the first named leg is outperforming.
 export const STYLE_CHARTS = [
   // TradingView's free charts don't carry the CBOE VIX or FTSE index feeds; CFD prices stand in.
-  { symbol: "CAPITALCOM:VIX", title: "VIX", note: "S&P 500 implied volatility (CFD price)" },
-  { symbol: "AMEX:IWD/AMEX:IWF", title: "Value vs growth (US)", note: "Russell 1000 Value ÷ Growth" },
-  { symbol: "AMEX:IWM/AMEX:SPY", title: "Small vs large caps (US)", note: "Russell 2000 ÷ S&P 500" },
-  { symbol: "AMEX:RSP/AMEX:SPY", title: "Equal vs cap weight (US)", note: "Breadth: average stock ÷ index" },
-  { symbol: "FOREXCOM:UKXGBP/FOREXCOM:SPXUSD", title: "UK vs US", note: "FTSE 100 ÷ S&P 500, local currency" },
-  { symbol: "FOREXCOM:GRXEUR/FOREXCOM:SPXUSD", title: "Germany vs US", note: "DAX ÷ S&P 500, local currency" },
+  {
+    symbol: "CAPITALCOM:VIX",
+    title: "VIX",
+    note: "S&P 500 implied volatility (CFD price)",
+    explain: "The options market's expected US stock swings over the next month, in annual %. Below ~15 is calm; above ~25 is stress. It jumps when stocks fall.",
+  },
+  {
+    symbol: "AMEX:IWD/AMEX:IWF",
+    title: "Value vs growth (US)",
+    note: "Russell 1000 Value ÷ Growth",
+    explain: "Rising: cheaper, cyclical stocks (banks, energy) beating expensive growth and tech. Often rises with bond yields and economic optimism.",
+  },
+  {
+    symbol: "AMEX:IWM/AMEX:SPY",
+    title: "Small vs large caps (US)",
+    note: "Russell 2000 ÷ S&P 500",
+    explain: "Rising: smaller, more domestic and debt-reliant companies beating the giants. Tends to rise when rate cuts and a stronger economy are expected.",
+  },
+  {
+    symbol: "AMEX:RSP/AMEX:SPY",
+    title: "Equal vs cap weight (US)",
+    note: "Breadth: average stock ÷ index",
+    explain: "Rising: the typical S&P 500 stock beating the index, so gains are broad. Falling: a few mega-caps are carrying the market (narrow breadth).",
+  },
+  {
+    symbol: "FOREXCOM:UKXGBP/FOREXCOM:SPXUSD",
+    title: "UK vs US",
+    note: "FTSE 100 ÷ S&P 500, local currency",
+    explain: "Rising: UK large caps beating US stocks. The FTSE leans to energy, miners, banks and defensives, so it tends to win when tech lags or commodities rally.",
+  },
+  {
+    symbol: "FOREXCOM:GRXEUR/FOREXCOM:SPXUSD",
+    title: "Germany vs US",
+    note: "DAX ÷ S&P 500, local currency",
+    explain: "Rising: German stocks beating US stocks, often on euro-area growth hopes, fiscal stimulus or a rotation away from US tech.",
+  },
 ];

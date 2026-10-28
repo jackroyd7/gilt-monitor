@@ -284,9 +284,11 @@ export default function EquitiesBoard({ quotes }: { quotes?: StockQuotes }) {
       </Panel>
 
       <section>
-        <h2 className="mb-2 text-sm font-semibold text-ink">
-          Volatility and style
-        </h2>
+        <h2 className="text-sm font-semibold text-ink">Volatility and style</h2>
+        <p className="mb-2 text-xs text-muted">
+          Each line is one market divided by another over the past year: a rising line means the first is outperforming.
+          Shifts show where money is rotating (risk appetite, sectors, regions).
+        </p>
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
           {STYLE_CHARTS.map((c) => (
             <Panel
@@ -324,6 +326,7 @@ export default function EquitiesBoard({ quotes }: { quotes?: StockQuotes }) {
                   support_host: "https://www.tradingview.com",
                 }}
               />
+              <p className="mt-2 text-xs leading-relaxed text-ink-2">{c.explain}</p>
             </Panel>
           ))}
         </div>
