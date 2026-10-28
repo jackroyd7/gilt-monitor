@@ -48,6 +48,7 @@ export default async function CommoditiesPage() {
     return {
       id: s.id,
       name: `${s.name}, ${s.unit}`,
+      note: data?.sources?.[s.id],
       digits: s.digits,
       value: last?.[1] ?? null,
       date: last?.[0],
@@ -89,14 +90,15 @@ export default async function CommoditiesPage() {
     <>
       <PageHeader title="Commodities">
         Energy, metals and agriculture. Live quotes and charts are TradingView&apos;s (some are CFD prices standing in for
-        exchange futures); daily spot prices and US crude stocks are from FRED (EIA data), positioning from the CFTC.
+        exchange futures); daily oil and gas prices are front-month futures (Yahoo Finance), US crude stocks are EIA
+        data and positioning is from the CFTC.
       </PageHeader>
       <TickerTape />
       <div className="space-y-4">
         <MarketsBoard groups={["Commodities"]} />
         {data ? <FxTiles tiles={tiles} /> : <p className="text-sm text-muted">No commodity data yet: run the “Update market data” GitHub Action.</p>}
         <div className="grid gap-4 lg:grid-cols-2">
-          <Card title="Brent − WTI spread" subtitle="$/bbl, daily spot (EIA). Widens when seaborne crude tightens relative to US supply.">
+          <Card title="Brent − WTI spread" subtitle={`$/bbl, daily (${data?.sources?.BRENT?.includes("future") ? "front-month futures" : "EIA spot"}).`}>
             <SeriesChart series={[{ key: "s", name: "Brent − WTI", color: "var(--series-1)", points: spread }]} xKind="date" unit="price" height={260} showLegend={false} />
             <p className="mt-2 text-xs leading-relaxed text-ink-2">
               The premium of international (Brent) over US (WTI) crude. It widens with Middle East or Russia supply risk and

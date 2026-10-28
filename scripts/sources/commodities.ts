@@ -13,10 +13,35 @@ async function eiaXls(id: string): Promise<[string, number][]> {
 }
 
 /** FRED prices (5 years) and CFTC disaggregated positions (3 years). Keeps old data for any part that fails. */
+/** Daily closes of a Yahoo Finance future (continuous front month). */
+async function yahooDaily(symbol: string, since: string): Promise<[string, number][]> {
+  const r = (JSON.parse(await getText(`https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}?range=5y&interval=1d`, "application/json")) as {
+    chart?: { result?: { timestamp?: number[]; indicators?: { quote?: { close?: (number | null)[] }[] } }[] };
+  }).chart?.result?.[0];
+  const ts = r?.timestamp ?? [];
+  const closes = r?.indicators?.quote?.[0]?.close ?? [];
+  return ts
+    .flatMap((t, i) => (closes[i] == null ? [] : [[new Date(t * 1000).toISOString().slice(0, 10), +closes[i]!.toFixed(3)] as [string, number]]))
+    .filter(([d]) => d >= since);
+}
+
 export async function fetchCommodities(previous: CommodityData | undefined, since: string, cotSince: string) {
   const prices: CommodityData["prices"] = { ...(previous?.prices ?? {}) };
+  const sources: NonNullable<CommodityData["sources"]> = { ...(previous?.sources ?? {}) };
   const failures: string[] = [];
   for (const s of COMMODITY_SERIES) {
+    if (s.yahoo) {
+      try {
+        const pts = await yahooDaily(s.yahoo, since);
+        if (pts.length < 100) throw new Error(`only ${pts.length} rows`);
+        prices[s.id] = pts;
+        sources[s.id] = `Yahoo ${s.yahoo} (front-month future)`;
+        console.log(`  ${s.id}: Yahoo ${s.yahoo} ${pts.at(-1)!.join(" ")} (${pts.length} pts)`);
+        continue;
+      } catch (e) {
+        console.warn(`  ${s.id}: Yahoo ${s.yahoo} failed (${(e as Error).message}); using FRED spot`);
+      }
+    }
     try {
       let pts = s.fred
         ? parseFredCsv(await getText(`https://fred.stlouisfed.org/graph/fredgraph.csv?id=${s.fred}&cosd=${since}`, "text/csv"))
@@ -24,6 +49,7 @@ export async function fetchCommodities(previous: CommodityData | undefined, sinc
       if (s.id === "CRUDE_STOCKS") pts = pts.map(([d, v]) => [d, v / 1000]); // thousand barrels → million
       if (!pts.length) throw new Error("no rows");
       prices[s.id] = pts;
+      sources[s.id] = s.fred ? `FRED ${s.fred} (EIA spot)` : `EIA ${s.eia}`;
       console.log(`  ${s.id}: ${pts[pts.length - 1].join(" ")} (${pts.length} pts)`);
     } catch (e) {
       failures.push(`${s.id}: ${(e as Error).message}`);
@@ -47,6 +73,6 @@ export async function fetchCommodities(previous: CommodityData | undefined, sinc
   } catch (e) {
     failures.push(`CFTC: ${(e as Error).message}`);
   }
-  const data: CommodityData = { updatedAt: new Date().toISOString(), prices, cot };
+  const data: CommodityData = { updatedAt: new Date().toISOString(), prices, sources, cot };
   return { data, failures };
 }

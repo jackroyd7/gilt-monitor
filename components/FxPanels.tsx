@@ -39,6 +39,8 @@ export interface FxTile {
   history: Point[];
   /** TradingView symbol for a live chart, if there is one. */
   tvSymbol?: string;
+  /** Where the price comes from (shown on hover and in the popup). */
+  note?: string;
 }
 
 const pct = (v: number | null) =>
@@ -83,7 +85,7 @@ export function FxTiles({ tiles }: { tiles: FxTile[] }) {
             className="card p-3 text-left hover:border-[color:var(--accent)]"
             title={
               t.date
-                ? `BoE 4pm rate, ${t.date}. Click for the chart.`
+                ? `${t.note ?? "BoE 4pm rate"}, ${t.date}. Click for the chart.`
                 : "no data"
             }
           >
@@ -105,7 +107,7 @@ export function FxTiles({ tiles }: { tiles: FxTile[] }) {
       {open && (
         <Modal
           title={open.name}
-          subtitle="Bank of England daily 4pm London rate"
+          subtitle={open.note ?? "Bank of England daily 4pm London rate"}
           onClose={() => setOpen(null)}
         >
           <SeriesChart

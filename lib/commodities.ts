@@ -4,11 +4,13 @@
 import type { CotFields, CotRow } from "./fx";
 
 export const COMMODITY_SERIES = [
-  { id: "BRENT", fred: "DCOILBRENTEU", eia: undefined, name: "Brent crude", unit: "$/bbl", digits: 2, tv: "TVC:UKOIL" },
-  { id: "WTI", fred: "DCOILWTICO", eia: undefined, name: "WTI crude", unit: "$/bbl", digits: 2, tv: "TVC:USOIL" },
-  { id: "HH", fred: "DHHNGSP", eia: undefined, name: "US natural gas (Henry Hub)", unit: "$/MMBtu", digits: 2, tv: "CAPITALCOM:NATURALGAS" },
+  // Front-month futures (the quoted benchmarks) from Yahoo Finance; EIA spot via FRED is the
+  // fallback. Physical spot Brent can sit well above futures when near-term supply is tight.
+  { id: "BRENT", yahoo: "BZ=F", fred: "DCOILBRENTEU", eia: undefined, name: "Brent crude", unit: "$/bbl", digits: 2, tv: "TVC:UKOIL" },
+  { id: "WTI", yahoo: "CL=F", fred: "DCOILWTICO", eia: undefined, name: "WTI crude", unit: "$/bbl", digits: 2, tv: "TVC:USOIL" },
+  { id: "HH", yahoo: "NG=F", fred: "DHHNGSP", eia: undefined, name: "US natural gas (Henry Hub)", unit: "$/MMBtu", digits: 2, tv: "CAPITALCOM:NATURALGAS" },
   // Not on FRED: read from EIA's spreadsheet download (see eiaXls in scripts/sources/commodities.ts).
-  { id: "CRUDE_STOCKS", fred: undefined, eia: "WCESTUS1", name: "US crude stocks (ex SPR)", unit: "m bbl", digits: 1, tv: undefined },
+  { id: "CRUDE_STOCKS", yahoo: undefined, fred: undefined, eia: "WCESTUS1", name: "US crude stocks (ex SPR)", unit: "m bbl", digits: 1, tv: undefined },
 ] as const;
 export type CommodityId = (typeof COMMODITY_SERIES)[number]["id"];
 
@@ -54,6 +56,8 @@ export function parseEiaSheet(rows: unknown[][]): [string, number][] {
 
 export interface CommodityData {
   updatedAt: string;
+  /** Where each price series came from this run, e.g. "Yahoo BZ=F (front-month future)". */
+  sources?: Partial<Record<CommodityId, string>>;
   /** prices[id] = [date, value][] oldest first. */
   prices: Partial<Record<CommodityId, [string, number][]>>;
   cot: Partial<Record<CommodityCotId, Record<string, CotRow>>>;
