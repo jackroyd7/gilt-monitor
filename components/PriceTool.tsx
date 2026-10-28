@@ -163,7 +163,7 @@ export default function PriceTool({
     if (compares.length >= 3 || compares.some((c) => c.symbol === symbol))
       return;
     setCompares((cs) => [...cs, { symbol, name: label }]);
-    fetch(`/api/history?symbol=${encodeURIComponent(symbol)}`)
+    fetch(`/api/prices?symbol=${encodeURIComponent(symbol)}`)
       .then(async (r) => {
         const d = (await r.json()) as { points?: Pt[]; error?: string };
         setCompares((cs) =>
