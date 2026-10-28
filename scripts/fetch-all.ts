@@ -11,9 +11,11 @@ import { addDays, latestDate, mergeCurveSets } from "../lib/curve";
 import { closeDate, emptyHistory, historyJson, previousBusinessDays, pruneHistory, recordCloses, repeatsPreviousClose } from "../lib/history";
 import { fetchAllPrices } from "../lib/live-core";
 import type { CurveSet, DataStatus, GiltHistory, GiltSnapshot } from "../lib/types";
+import type { CotHistory, FxHistory } from "../lib/fx";
 import { fetchBoe } from "./sources/boe";
 import { fetchBundesbank } from "./sources/bundesbank";
 import { fetchDmo } from "./sources/dmo";
+import { fetchBoeFx, fetchCot } from "./sources/fx";
 import { fetchUst } from "./sources/ust";
 
 const DATA = path.resolve(process.env.DATA_DIR ?? "data");
@@ -40,6 +42,13 @@ function curveJson(set: CurveSet): string {
   void _omit;
   const head = JSON.stringify(meta, null, 2).slice(0, -2);
   return `${head},\n  "rows": {\n${rows.join(",\n")}\n  }\n}\n`;
+}
+
+/** Like curveJson: one dated row per line. */
+function rowsJson<T extends { rows: Record<string, unknown> }>(obj: T): string {
+  const { rows, ...meta } = obj;
+  const lines = Object.keys(rows).sort().map((d) => `    ${JSON.stringify(d)}: ${JSON.stringify(rows[d])}`);
+  return `${JSON.stringify(meta, null, 2).slice(0, -2)},\n  "rows": {\n${lines.join(",\n")}\n  }\n}\n`;
 }
 
 async function saveCurve(fresh: CurveSet) {
@@ -79,6 +88,21 @@ async function main() {
   });
   await run("bundesbank", async () => ({ latestDate: latestDate(await saveCurve(await fetchBundesbank({ backfillSince }))) }));
   await run("ust", async () => ({ latestDate: latestDate(await saveCurve(await fetchUst({ backfillSince }))) }));
+  // FX and positioning are small, so the whole kept history is re-downloaded each run.
+  await run("boe_fx", async () => {
+    const fx: FxHistory = await fetchBoeFx(keepFrom);
+    const old = await readJson<FxHistory>(path.join(DATA, "fx.json"));
+    if (old && old.series.join() === fx.series.join()) fx.rows = { ...Object.fromEntries(Object.entries(old.rows).filter(([d]) => d >= keepFrom)), ...fx.rows };
+    await writeFile(path.join(DATA, "fx.json"), rowsJson(fx));
+    return { latestDate: Object.keys(fx.rows).sort().pop() };
+  });
+  await run("cftc", async () => {
+    const cot: CotHistory = await fetchCot(addDays(today, -3 * 365));
+    await writeFile(path.join(DATA, "cot.json"), JSON.stringify(cot) + "\n");
+    const latest = Object.values(cot.rows).flatMap((r) => Object.keys(r ?? {})).sort().pop();
+    return { latestDate: latest, message: Object.keys(cot.rows).join(", ") };
+  });
+
   let dmoSnapshot: GiltSnapshot | undefined;
   await run("dmo", async () => {
     const { snapshot, warning } = await fetchDmo();

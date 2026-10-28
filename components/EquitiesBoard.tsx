@@ -72,7 +72,7 @@ export default function EquitiesBoard() {
         <div className="lg:col-span-3">
           <Panel
             title={`${m.label.split(" · ")[1]} heatmap`}
-            note="Size = market cap, colour = performance. Click a stock for its page."
+            note="Size = market cap, colour = performance. Hover a tile for details; click it for the stock page."
             action={
               <div className="flex rounded-md border border-line text-xs">
                 {HEATMAP_PERIODS.map((p) => (
@@ -99,8 +99,11 @@ export default function EquitiesBoard() {
                 grouping: "sector",
                 blockSize: "market_cap_basic",
                 blockColor: period,
-                hasTopBar: false,
-                isDataSetEnabled: false,
+                // TradingView's own top bar, with its index picker, as a fallback if a
+                // dataSource id below isn't recognised (it then shows the S&P 500).
+                hasTopBar: true,
+                isDataSetEnabled: true,
+                isSetDataSetEnabled: true,
                 isZoomEnabled: true,
                 hasSymbolTooltip: true,
                 isMonoSize: false,

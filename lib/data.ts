@@ -1,6 +1,7 @@
 import "server-only";
 import { readFile } from "node:fs/promises";
 import path from "node:path";
+import type { CotHistory, FxHistory } from "./fx";
 import { withLatestCloses } from "./history";
 import { getLive, withLive, type LiveSnapshot } from "./live";
 import type { CurveId, CurveSet, DataStatus, GiltHistory, GiltSnapshot } from "./types";
@@ -28,6 +29,12 @@ const dataDir = () => path.join(/*turbopackIgnore: true*/ process.cwd(), process
 /** Daily closes per gilt, recorded by the data job. */
 export async function loadGiltHistory(): Promise<GiltHistory | undefined> {
   return readJson<GiltHistory>(path.join(dataDir(), "gilt-history.json"));
+}
+
+/** BoE daily FX rates and CFTC positioning, written by the data job. */
+export async function loadFx(): Promise<{ fx: FxHistory | undefined; cot: CotHistory | undefined }> {
+  const [fx, cot] = await Promise.all([readJson<FxHistory>(path.join(dataDir(), "fx.json")), readJson<CotHistory>(path.join(dataDir(), "cot.json"))]);
+  return { fx, cot };
 }
 
 /** Reads everything the daily job wrote. DATA_DIR lets you point at demo data locally. */

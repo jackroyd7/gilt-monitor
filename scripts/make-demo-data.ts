@@ -124,8 +124,36 @@ for (let i = Math.max(0, dates.length - 260); i <= last; i++) {
   );
 }
 
+// FX loosely tied to the 2y-ish rate gap, so the rates-vs-FX charts have something to show.
+function demoFx() {
+  const noise = { usd: walk(0, 0.004), eur: walk(0, 0.003), jpy: walk(0, 0.006), chf: walk(0, 0.004) };
+  const rows: Record<string, number[]> = {};
+  dates.forEach((d, i) => {
+    const usd = 1.27 * Math.exp(0.03 * (levels.uk[i] - levels.us[i] - 0.3) + noise.usd[i]);
+    const eur = 1.17 * Math.exp(0.02 * (levels.uk[i] - levels.de[i] - 2) + noise.eur[i]);
+    const jpy = 190 * Math.exp(noise.jpy[i]);
+    const chf = 1.12 * Math.exp(noise.chf[i]);
+    const eri = 82 * Math.exp(0.6 * Math.log(usd / 1.27) + 0.4 * Math.log(eur / 1.17));
+    rows[d] = [usd, eur, jpy, chf, eri].map((v) => +v.toFixed(4));
+  });
+  const cot: Record<string, Record<string, Record<string, number>>> = {};
+  for (const [id, scale] of [["GBP", 40000], ["EUR", 90000], ["JPY", 70000], ["CHF", 15000]] as const) {
+    const am = walk(0, scale / 10);
+    const lev = walk(0, scale / 8);
+    cot[id] = {};
+    dates.forEach((d, i) => {
+      if (new Date(d + "T00:00:00Z").getUTCDay() !== 2) return;
+      cot[id][d] = { oi: scale * 5, amLong: scale + Math.max(am[i], -scale), amShort: scale, levLong: scale + Math.max(lev[i], -scale), levShort: scale };
+    });
+  }
+  return { fx: { source: "DEMO", series: ["GBPUSD", "GBPEUR", "GBPJPY", "GBPCHF", "ERI"], rows }, cot: { source: "DEMO", rows: cot } };
+}
+
 async function main() {
   await mkdir(path.join(DIR, "curves"), { recursive: true });
+  const { fx, cot } = demoFx();
+  await writeFile(path.join(DIR, "fx.json"), JSON.stringify(fx));
+  await writeFile(path.join(DIR, "cot.json"), JSON.stringify(cot));
   for (const s of sets) await writeFile(path.join(DIR, "curves", `${s.id}.json`), JSON.stringify(s));
   // Today's snapshot equals the last history row, as it would from the real job.
   const lastRow = history.rows[dates[last]];
@@ -136,7 +164,7 @@ async function main() {
   const status: DataStatus = {
     updatedAt: now,
     demo: true,
-    sources: Object.fromEntries(["boe", "bundesbank", "ust", "dmo"].map((k) => [k, { ok: true, checkedAt: now, latestDate: end, message: "demo" }])),
+    sources: Object.fromEntries(["boe", "bundesbank", "ust", "dmo", "boe_fx", "cftc"].map((k) => [k, { ok: true, checkedAt: now, latestDate: end, message: "demo" }])),
   };
   await writeFile(path.join(DIR, "status.json"), JSON.stringify(status, null, 2));
   console.log(`Wrote synthetic data for ${dates.length} days and ${gilts.length} gilts to ${DIR}`);

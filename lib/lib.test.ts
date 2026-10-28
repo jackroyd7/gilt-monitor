@@ -424,3 +424,47 @@ test("symbol search finds stocks without crowding out market benchmarks", () => 
   const banks = top("bank");
   assert.ok(banks.length > 0 && banks.length <= 8 && banks.includes("NYSE:BAC"));
 });
+
+import { cotNet, parseCot, parseIadbCsv, pctChange, realisedVol, rollingCorrelation, type Point } from "./fx";
+
+test("parseIadbCsv reads BoE database CSV in the requested column order", () => {
+  const csv = "DATE,XUDLERS,XUDLUSS\n02 Jan 2024,1.1555,1.2639\n03 Jan 2024,,1.2620\nbad,1,2\n";
+  const rows = parseIadbCsv(csv, ["XUDLUSS", "XUDLERS", "XUDLBK67"]);
+  assert.deepEqual(rows["2024-01-02"], [1.2639, 1.1555, null]);
+  assert.deepEqual(rows["2024-01-03"], [1.262, null, null]);
+  assert.equal(Object.keys(rows).length, 2);
+  assert.throws(() => parseIadbCsv("<html><body>error</body></html>", ["XUDLUSS"]));
+});
+
+test("parseCot keeps followed contracts and nets positions", () => {
+  const rows = parseCot([
+    {
+      cftc_contract_market_code: "096742",
+      report_date_as_yyyy_mm_dd: "2024-05-07T00:00:00.000",
+      open_interest_all: "200000",
+      asset_mgr_positions_long: "50000",
+      asset_mgr_positions_short: "20000",
+      lev_money_positions_long: "30000",
+      lev_money_positions_short: "45000",
+    },
+    { cftc_contract_market_code: "999999", report_date_as_yyyy_mm_dd: "2024-05-07", open_interest_all: "1" },
+  ]);
+  assert.deepEqual(Object.keys(rows), ["GBP"]);
+  assert.deepEqual(cotNet(rows.GBP), [{ date: "2024-05-07", assetManagers: 30000, leveraged: -15000, oi: 200000 }]);
+});
+
+test("FX analytics: changes, realised vol and correlation", () => {
+  const pts: Point[] = [
+    ["2023-12-29", 1.25],
+    ["2024-01-02", 1.26],
+    ["2024-01-09", 1.3],
+  ];
+  assert.ok(Math.abs(pctChange(pts, "ytd")! - 4) < 1e-9);
+  assert.ok(Math.abs(pctChange(pts, 7)! - (1.3 / 1.26 - 1) * 100) < 1e-9);
+  // Alternating ±1% moves: vol ≈ 1% × √252.
+  const alt: Point[] = Array.from({ length: 30 }, (_, i) => [`2024-01-${String(i + 1).padStart(2, "0")}`, i % 2 ? 1.01 : 1]);
+  assert.ok(Math.abs(realisedVol(alt, 21)! - 15.9) < 0.5);
+  const spread: Point[] = alt.map(([d, v]) => [d, v * 100]);
+  const c = rollingCorrelation(alt, spread, 10);
+  assert.ok(c.length > 0 && c.every(([, x]) => x > 0.99));
+});

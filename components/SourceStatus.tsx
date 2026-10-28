@@ -6,6 +6,8 @@ const NAMES: Record<string, string> = {
   ust: "US Treasury curve",
   dmo: "DMO gilts in issue",
   gilt_history: "Gilt closes",
+  boe_fx: "BoE FX rates",
+  cftc: "CFTC positioning",
 };
 
 export default async function SourceStatus() {

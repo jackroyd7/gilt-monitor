@@ -25,11 +25,20 @@ export interface Series {
   dashed?: boolean;
 }
 
-type Unit = "pct" | "bp" | "price";
+export type Unit = "pct" | "bp" | "price" | "count";
 type XKind = "tenor" | "date";
 
-const fmtVal = (v: number, unit: Unit) =>
-  unit === "pct" ? `${v.toFixed(3)}%` : unit === "bp" ? `${v.toFixed(1)}bp` : v.toFixed(3);
+export const fmtVal = (v: number, unit: Unit) =>
+  unit === "pct"
+    ? `${v.toFixed(3)}%`
+    : unit === "bp"
+      ? `${v.toFixed(1)}bp`
+      : unit === "count"
+        ? Math.round(v).toLocaleString("en-GB")
+        : v.toFixed(3);
+/** Short axis labels: 12,500 → 12.5k. */
+export const fmtAxis = (v: number, unit: Unit) =>
+  unit === "bp" ? v.toFixed(0) : unit === "pct" ? v.toFixed(2) : unit === "count" ? (Math.abs(v) >= 1000 ? `${+(v / 1000).toFixed(1)}k` : v.toFixed(0)) : v.toFixed(1);
 const fmtTenor = (t: number) => (t < 1 ? `${Math.round(t * 12)}m` : `${+t.toFixed(1)}y`);
 const fmtDate = (ms: number) =>
   new Date(ms).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "2-digit", timeZone: "UTC" });
@@ -37,6 +46,8 @@ const fmtDate = (ms: number) =>
 const AXIS_TICK = { fontSize: 11 };
 
 const toX = (x: number | string) => (typeof x === "string" ? Date.parse(x + "T00:00:00Z") : x);
+
+export { toX, fmtDate, AXIS_TICK };
 
 export const RANGES = [
   { key: "1M", days: 31 },
@@ -182,7 +193,7 @@ export function SeriesChart({
               <YAxis tick={AXIS_TICK}
                 width={48}
                 domain={["auto", "auto"]}
-                tickFormatter={(v: number) => (unit === "bp" ? v.toFixed(0) : unit === "pct" ? v.toFixed(2) : v.toFixed(1))}
+                tickFormatter={(v: number) => fmtAxis(v, unit)}
               />
               {zeroLine && <ReferenceLine y={0} stroke="var(--axis)" />}
               <Tooltip
