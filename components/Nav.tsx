@@ -63,7 +63,7 @@ function MenuTab({
         aria-haspopup="menu"
         className={
           variant === "top"
-            ? `whitespace-nowrap border-b-2 px-3 py-3 text-sm ${active ? "border-accent font-medium text-ink" : "border-transparent text-ink-2 hover:text-ink"}`
+            ? `whitespace-nowrap border-b-2 px-2 py-3 text-sm xl:px-3 ${active ? "border-accent font-medium text-ink" : "border-transparent text-ink-2 hover:text-ink"}`
             : `flex w-full flex-col items-center py-2 text-[11px] ${active ? "font-semibold text-accent" : "text-ink-2"}`
         }
       >
@@ -97,7 +97,7 @@ function TopLink({ href, label, path }: { href: string; label: string; path: str
   return (
     <Link
       href={href}
-      className={`whitespace-nowrap border-b-2 px-3 py-3 text-sm ${active ? "border-accent font-medium text-ink" : "border-transparent text-ink-2 hover:text-ink"}`}
+      className={`whitespace-nowrap border-b-2 px-2 py-3 text-sm xl:px-3 ${active ? "border-accent font-medium text-ink" : "border-transparent text-ink-2 hover:text-ink"}`}
     >
       {label}
     </Link>
@@ -122,13 +122,14 @@ export default function Nav() {
 
   return (
     <>
-      <header className="sticky top-0 z-30 border-b border-line bg-surface/95 backdrop-blur">
+      {/* Padded below the status bar when opened from the home screen (the page draws under it). */}
+      <header className="sticky top-0 z-30 border-b border-line bg-surface/95 backdrop-blur" style={{ paddingTop: "env(safe-area-inset-top)" }}>
         <nav className="mx-auto flex max-w-7xl items-center gap-1 px-4 sm:px-6">
-          <Link href="/" className="mr-4 py-3 text-sm font-semibold whitespace-nowrap text-ink">
+          <Link href="/" className="mr-2 py-3 text-sm font-semibold whitespace-nowrap text-ink xl:mr-4">
             Markets Monitor
           </Link>
-          {/* Desktop and tablet tabs */}
-          <div className="hidden items-center gap-1 md:flex">
+          {/* Top tabs from 1024px (laptops, iPad landscape); narrower screens use the bottom bar. */}
+          <div className="hidden items-center gap-0.5 lg:flex xl:gap-1">
             <TopLink href="/" label="Overview" path={path} />
             <MenuTab label="Gilts" items={GILT_PAGES} active={inGilts} variant="top" />
             {MARKET_TABS.map((t) => (
@@ -144,7 +145,7 @@ export default function Nav() {
       </header>
       {/* Phone tab bar */}
       <nav
-        className="fixed inset-x-0 bottom-0 z-30 flex border-t border-line bg-surface/95 backdrop-blur md:hidden"
+        className="fixed inset-x-0 bottom-0 z-30 flex border-t border-line bg-surface/95 backdrop-blur lg:hidden"
         style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
         aria-label="Main"
       >
