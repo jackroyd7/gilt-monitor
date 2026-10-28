@@ -112,8 +112,6 @@ export default async function RatesPage() {
   };
   const yieldTable = [
     ...YIELD_ROWS.map(([id, name, code]) => yieldRow(name, code, (t) => tenorPoints(curves[id], t, addDays(since, 2 * 365)))),
-    // France: daily benchmark OAT yields (Stooq), shown when the data job has them.
-    ...(rates?.france && Object.keys(rates.france).length ? [yieldRow("French OATs", "FR", (t) => (rates.france![String(t)] ?? []) as Point[])] : []),
   ];
 
   // Inflation and real yields.
@@ -220,9 +218,8 @@ export default async function RatesPage() {
               </table>
             </div>
             <p className="mt-2 text-xs text-muted">
-              UK, US and Germany: BoE fitted gilt zero curve, US Treasury par curve and Bundesbank zero curve, so levels can differ
-              by a few bp from benchmark bond yields. France: benchmark OAT yields (Stooq). Dates are the latest close
-              (month-day).
+              BoE fitted gilt zero curve, US Treasury par curve and Bundesbank zero curve, so levels can differ by a few bp from
+              benchmark bond yields. Dates are the latest close (month-day).
             </p>
           </Card>
           <Card title="Curves today" subtitle="Zero curves (US: par), semi-annual %. UK BoE, Germany Bundesbank, US Treasury.">

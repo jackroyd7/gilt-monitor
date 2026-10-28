@@ -3,7 +3,7 @@ import ChartWorkbench from "@/components/ChartWorkbench";
 import { SeriesChart } from "@/components/charts";
 import { rateSA } from "@/lib/analytics";
 import { sortedDates } from "@/lib/curve";
-import { loadMarket, loadRates } from "@/lib/data";
+import { loadMarket } from "@/lib/data";
 import type { CurveId } from "@/lib/types";
 import { PageHeader } from "@/components/Tiles";
 import { normaliseTvSymbol } from "@/lib/tv-symbol";
@@ -47,18 +47,6 @@ async function ownYieldChart(symbol: string | undefined) {
   const [, country, tenorText] = m;
   const tenor = Number(tenorText);
   const def = YIELD_CURVES[country];
-  if (country === "FR") {
-    await connection();
-    const pts = ((await loadRates())?.france?.[String(tenor)] ?? []) as [string, number][];
-    if (pts.length) {
-      return (
-        <div className="p-4">
-          <SeriesChart series={[{ key: "y", name: `${tenor}y yield`, color: "var(--series-1)", points: pts }]} xKind="date" unit="pct" height={420} showLegend={false} />
-          <p className="mt-2 text-xs text-muted">End of day, French {tenor}-year benchmark OAT yield (Stooq), as TradingView&apos;s free charts don&apos;t include bond yields.</p>
-        </div>
-      );
-    }
-  }
   if (!def) {
     return (
       <div className="p-6 text-sm text-ink-2">
