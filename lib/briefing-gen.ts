@@ -44,7 +44,8 @@ async function headlines(): Promise<NewsItem[]> {
     .slice(0, 60);
 }
 
-async function marketContext(dataDir: string): Promise<string> {
+/** Our latest closing data as plain text, for prompts. */
+export async function marketContext(dataDir: string): Promise<string> {
   const readJson = async <T>(f: string) => {
     try {
       return JSON.parse(await readFile(path.join(dataDir, f), "utf8")) as T;

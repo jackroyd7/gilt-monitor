@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from "next";
+import AskBox from "@/components/AskBox";
 import Nav from "@/components/Nav";
 import SourceStatus, { DemoBanner } from "@/components/SourceStatus";
 import { themeBootScript } from "@/lib/theme";
@@ -28,6 +29,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         <Nav />
         <main className="mx-auto w-full max-w-7xl flex-1 px-4 py-6 sm:px-6">
           <DemoBanner />
+          <AskBox />
           {children}
         </main>
         <footer className="mx-auto w-full max-w-7xl px-4 pb-24 sm:px-6 md:pb-8">
