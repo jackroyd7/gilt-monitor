@@ -17,4 +17,7 @@ export type RateId = (typeof RATE_SERIES)[number]["id"];
 export interface RatesData {
   updatedAt: string;
   series: Partial<Record<RateId, [string, number][]>>;
+  /** French government benchmark yields by tenor ("2", "5", "10", "30"), from the ECB. */
+  france?: Record<string, [string, number][]>;
+  franceKeys?: Record<string, string>;
 }
