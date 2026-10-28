@@ -13,7 +13,6 @@ const NAMES: Record<string, string> = {
   boe_policy: "Bank Rate & MPC dates",
   rates: "US breakevens & overnight rates",
   stocks: "UK/European/Asian stock prices",
-  stock_metrics: "Stock valuation metrics",
 };
 
 export default async function SourceStatus() {

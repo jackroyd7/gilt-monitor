@@ -31,8 +31,10 @@ const SUFFIX: Record<string, string> = {
 export function yahooSymbol(tv: string): string | null {
   const [ex, raw] = tv.split(":");
   if (!raw) return null;
-  if (ex === "NASDAQ" || ex === "NYSE" || ex === "AMEX")
+  if (ex === "NASDAQ" || ex === "NYSE" || ex === "AMEX" || ex === "US")
     return raw.replace(/\./g, "-");
+  // Any other market, by its Yahoo ticker (see global-symbols.ts).
+  if (ex === "YF") return raw;
   const suffix = SUFFIX[ex];
   if (!suffix) return null;
   const t = raw.replace(/\.$/, "").replace(/\./g, "-");

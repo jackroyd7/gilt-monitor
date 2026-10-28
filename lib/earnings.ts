@@ -16,14 +16,28 @@ export interface EarningsEvent {
   revenueActual: number | null;
 }
 
-const SUFFIX: Record<string, string> = { LSE: ".L", XETR: ".DE", EURONEXT: ".PA", TSE: ".T", KRX: ".KS", TWSE: ".TW", SZSE: ".SZ", HKEX: ".HK" };
+const SUFFIX: Record<string, string> = {
+  LSE: ".L",
+  XETR: ".DE",
+  EURONEXT: ".PA",
+  TSE: ".T",
+  KRX: ".KS",
+  TWSE: ".TW",
+  SZSE: ".SZ",
+  HKEX: ".HK",
+};
 
 /** Finnhub's symbol for a TradingView symbol: "LSE:BP." → "BP.L", "HKEX:700" → "0700.HK". */
-export function finnhubSymbol(tv: string, usListings: Record<string, string> = {}): string | null {
+export function finnhubSymbol(
+  tv: string,
+  usListings: Record<string, string> = {},
+): string | null {
   if (usListings[tv]) return usListings[tv];
   const [ex, raw] = tv.split(":");
   if (!raw) return null;
-  if (ex === "NASDAQ" || ex === "NYSE" || ex === "AMEX") return raw;
+  if (ex === "NASDAQ" || ex === "NYSE" || ex === "AMEX" || ex === "US")
+    return raw;
+  if (ex === "YF") return raw;
   const suffix = SUFFIX[ex];
   if (!suffix) return null;
   const t = raw.replace(/\.$/, "").replace(/\./g, "-");
@@ -37,7 +51,8 @@ export function regionOf(group: string): EarningsEvent["region"] {
   return "Europe";
 }
 
-const n = (v: unknown) => (typeof v === "number" && Number.isFinite(v) ? v : null);
+const n = (v: unknown) =>
+  typeof v === "number" && Number.isFinite(v) ? v : null;
 
 /** Keeps the calendar rows for stocks on our list and maps them to our symbols. */
 export function matchEarnings(
@@ -55,7 +70,12 @@ export function matchEarnings(
   for (const r of rows) {
     const s = bySymbol.get(String(r.symbol ?? "").toUpperCase());
     const date = String(r.date ?? "");
-    if (!s || !/^\d{4}-\d{2}-\d{2}$/.test(date) || seen.has(`${s.symbol}|${date}`)) continue;
+    if (
+      !s ||
+      !/^\d{4}-\d{2}-\d{2}$/.test(date) ||
+      seen.has(`${s.symbol}|${date}`)
+    )
+      continue;
     seen.add(`${s.symbol}|${date}`);
     out.push({
       date,
@@ -71,5 +91,7 @@ export function matchEarnings(
       revenueActual: n(r.revenueActual),
     });
   }
-  return out.sort((a, b) => a.date.localeCompare(b.date) || a.name.localeCompare(b.name));
+  return out.sort(
+    (a, b) => a.date.localeCompare(b.date) || a.name.localeCompare(b.name),
+  );
 }

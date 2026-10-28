@@ -13,6 +13,13 @@ export interface StockHistory {
   points: [string, number][];
   high52?: number;
   low52?: number;
+  /** Daily volumes, aligned with points. */
+  volumes?: (number | null)[];
+  dayHigh?: number;
+  dayLow?: number;
+  dayVolume?: number;
+  prevClose?: number;
+  name?: string;
 }
 
 const CACHE_MS = 15 * 60_000;
@@ -21,6 +28,9 @@ const store = ((
     __giltStockHist?: Map<string, { at: number; h: StockHistory }>;
   }
 ).__giltStockHist ??= new Map());
+
+const numOr = (v: unknown) =>
+  typeof v === "number" && Number.isFinite(v) ? v : undefined;
 
 /** US exchanges work in TradingView's widgets; everything else gets our own view. */
 export const widgetsServe = (tv: string) => /^(NASDAQ|NYSE|AMEX):/i.test(tv);
@@ -48,13 +58,22 @@ export async function stockHistory(tv: string): Promise<StockHistory | null> {
           result?: {
             meta?: Record<string, unknown>;
             timestamp?: number[];
-            indicators?: { quote?: { close?: (number | null)[] }[] };
+            indicators?: {
+              quote?: {
+                close?: (number | null)[];
+                volume?: (number | null)[];
+              }[];
+            };
           }[];
         };
       }
     ).chart?.result?.[0];
     const ts = r?.timestamp ?? [];
     const closes = r?.indicators?.quote?.[0]?.close ?? [];
+    const vols = r?.indicators?.quote?.[0]?.volume ?? [];
+    const volumes = ts.flatMap((_, i) =>
+      closes[i] == null ? [] : [vols[i] ?? null],
+    );
     const points = ts.flatMap((t, i) =>
       closes[i] == null
         ? []
@@ -93,6 +112,17 @@ export async function stockHistory(tv: string): Promise<StockHistory | null> {
         typeof meta.fiftyTwoWeekLow === "number"
           ? meta.fiftyTwoWeekLow
           : undefined,
+      volumes: volumes.some((v) => v != null) ? volumes : undefined,
+      dayHigh: numOr(meta.regularMarketDayHigh),
+      dayLow: numOr(meta.regularMarketDayLow),
+      dayVolume: numOr(meta.regularMarketVolume),
+      prevClose: numOr(meta.chartPreviousClose ?? meta.previousClose),
+      name:
+        typeof meta.longName === "string"
+          ? meta.longName
+          : typeof meta.shortName === "string"
+            ? meta.shortName
+            : undefined,
     };
     if (store.size > 300) store.clear();
     store.set(tv, { at: Date.now(), h });

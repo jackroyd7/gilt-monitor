@@ -1,148 +1,102 @@
-// Valuation, pricing and fundamental metrics per stock, from Yahoo Finance's quote summary.
-// The data job fetches them once a day into data/stock-metrics.json.
+// Valuation and fundamental metrics per stock, from Finnhub's "basic financials"
+// (/stock/metric?metric=all). Pure helpers, shared by the server fetcher and tests.
 
-export const METRIC_KEYS = [
-  "price",
-  "marketCap",
-  "enterpriseValue",
-  "trailingPE",
-  "forwardPE",
-  "pegRatio",
-  "priceToBook",
-  "priceToSales",
-  "evToEbitda",
-  "evToRevenue",
-  "dividendYield",
-  "payoutRatio",
-  "beta",
-  "high52",
-  "low52",
-  "avg50",
-  "avg200",
-  "avgVolume",
-  "sharesOutstanding",
-  "shortPctFloat",
-  "targetMean",
-  "analysts",
-  "profitMargin",
-  "operatingMargin",
-  "returnOnEquity",
-  "revenueGrowth",
-  "earningsGrowth",
-  "debtToEquity",
-  "totalCash",
-  "totalDebt",
-  "freeCashflow",
-] as const;
-
-export type MetricKey = (typeof METRIC_KEYS)[number];
-
-export type StockMetrics = Partial<Record<MetricKey, number>> & {
-  /** Currency of the share price (GBp for most LSE listings). */
-  currency?: string;
-  /** Currency the accounts are reported in (cash, debt, free cash flow). */
-  financialCurrency?: string;
-  /** Analysts' consensus, e.g. "buy", "hold". */
-  recommendation?: string;
-  /** When fetched, ISO. */
-  asOf: string;
-};
-
-export interface StockMetricsFile {
-  updatedAt: string;
-  stocks: Record<string, StockMetrics>;
+export interface StockMetrics {
+  /** Absolute amounts in the listing's currency. */
+  marketCap?: number;
+  enterpriseValue?: number;
+  trailingPE?: number;
+  forwardPE?: number;
+  pegRatio?: number;
+  priceToBook?: number;
+  priceToSales?: number;
+  evToEbitda?: number;
+  evToRevenue?: number;
+  /** Fractions: 0.041 = 4.1%. */
+  dividendYield?: number;
+  payoutRatio?: number;
+  grossMargin?: number;
+  operatingMargin?: number;
+  profitMargin?: number;
+  returnOnEquity?: number;
+  revenueGrowth?: number;
+  earningsGrowth?: number;
+  /** Ratios: 1.5 = 1.5x. */
+  debtToEquity?: number;
+  currentRatio?: number;
+  eps?: number;
+  beta?: number;
 }
 
-type Raw = { raw?: unknown } | number | undefined | null;
-const num = (v: Raw): number | undefined => {
-  const x = typeof v === "object" && v !== null ? v.raw : v;
-  return typeof x === "number" && Number.isFinite(x) ? x : undefined;
-};
+const num = (v: unknown) =>
+  typeof v === "number" && Number.isFinite(v) ? v : undefined;
 
-/** Yahoo v10 quoteSummary (modules price, summaryDetail, defaultKeyStatistics, financialData) → metrics. */
-export function parseQuoteSummary(
-  json: unknown,
-  asOf: string,
-): StockMetrics | null {
-  const r = (
-    json as {
-      quoteSummary?: {
-        result?: Record<string, Record<string, Raw | string>>[];
-      };
+/** Finnhub /stock/metric?metric=all → our metrics. Finnhub quotes percentages as 4.1 and amounts in millions. */
+export function parseFinnhubMetric(json: unknown): StockMetrics | null {
+  const m = (json as { metric?: Record<string, unknown> })?.metric;
+  if (!m || typeof m !== "object") return null;
+  const pick = (...keys: string[]) => {
+    for (const k of keys) {
+      const v = num(m[k]);
+      if (v !== undefined) return v;
     }
-  ).quoteSummary?.result?.[0];
-  if (!r) return null;
-  const p = (r.price ?? {}) as Record<string, Raw>;
-  const s = (r.summaryDetail ?? {}) as Record<string, Raw>;
-  const k = (r.defaultKeyStatistics ?? {}) as Record<string, Raw>;
-  const f = (r.financialData ?? {}) as Record<string, Raw | string>;
-  const fin = (key: string) => num(f[key] as Raw);
-  const m: StockMetrics = {
-    asOf,
-    price: num(p.regularMarketPrice),
-    marketCap: num(p.marketCap) ?? num(s.marketCap),
-    enterpriseValue: num(k.enterpriseValue),
-    trailingPE: num(s.trailingPE),
-    forwardPE: num(s.forwardPE) ?? num(k.forwardPE),
-    pegRatio: num(k.pegRatio) ?? num(k.trailingPegRatio),
-    priceToBook: num(k.priceToBook),
-    priceToSales: num(s.priceToSalesTrailing12Months),
-    evToEbitda: num(k.enterpriseToEbitda),
-    evToRevenue: num(k.enterpriseToRevenue),
-    dividendYield: num(s.dividendYield) ?? num(s.trailingAnnualDividendYield),
-    payoutRatio: num(s.payoutRatio),
-    beta: num(s.beta) ?? num(k.beta),
-    high52: num(s.fiftyTwoWeekHigh),
-    low52: num(s.fiftyTwoWeekLow),
-    avg50: num(s.fiftyDayAverage),
-    avg200: num(s.twoHundredDayAverage),
-    avgVolume: num(s.averageVolume),
-    sharesOutstanding: num(k.sharesOutstanding),
-    shortPctFloat: num(k.shortPercentOfFloat),
-    targetMean: fin("targetMeanPrice"),
-    analysts: fin("numberOfAnalystOpinions"),
-    profitMargin: fin("profitMargins") ?? num(k.profitMargins),
-    operatingMargin: fin("operatingMargins"),
-    returnOnEquity: fin("returnOnEquity"),
-    revenueGrowth: fin("revenueGrowth"),
-    earningsGrowth: fin("earningsGrowth"),
-    // Yahoo quotes debt/equity as a percentage (e.g. 150 = 1.5x).
-    debtToEquity: fin("debtToEquity"),
-    totalCash: fin("totalCash"),
-    totalDebt: fin("totalDebt"),
-    freeCashflow: fin("freeCashflow"),
+    return undefined;
   };
-  const ccy =
-    typeof p.currency === "string"
-      ? p.currency
-      : typeof s.currency === "string"
-        ? s.currency
-        : undefined;
-  if (ccy) m.currency = ccy;
-  if (typeof f.financialCurrency === "string")
-    m.financialCurrency = f.financialCurrency;
-  if (typeof f.recommendationKey === "string" && f.recommendationKey !== "none")
-    m.recommendation = f.recommendationKey.replace(/_/g, " ");
-  for (const key of METRIC_KEYS) if (m[key] === undefined) delete m[key];
-  // Nothing useful came back (an unknown symbol returns an empty shell).
-  if (m.marketCap == null && m.trailingPE == null && m.high52 == null)
-    return null;
-  return m;
-}
-
-/** Median of a metric across a set of stocks, ignoring gaps and non-positive multiples. */
-export function median(values: (number | undefined)[]): number | undefined {
-  const v = values
-    .filter((x): x is number => x != null && Number.isFinite(x) && x > 0)
-    .sort((a, b) => a - b);
-  if (v.length < 3) return undefined;
-  const mid = v.length >> 1;
-  return v.length % 2 ? v[mid] : (v[mid - 1] + v[mid]) / 2;
+  const pct = (...keys: string[]) => {
+    const v = pick(...keys);
+    return v === undefined ? undefined : v / 100;
+  };
+  const mn = (...keys: string[]) => {
+    const v = pick(...keys);
+    return v === undefined ? undefined : v * 1e6;
+  };
+  const out: StockMetrics = {
+    marketCap: mn("marketCapitalization"),
+    enterpriseValue: mn("enterpriseValue"),
+    trailingPE: pick(
+      "peTTM",
+      "peBasicExclExtraTTM",
+      "peExclExtraTTM",
+      "peNormalizedAnnual",
+    ),
+    forwardPE: pick("forwardPE", "peForward"),
+    pegRatio: pick("pegTTM", "pegRatio"),
+    priceToBook: pick("pb", "pbQuarterly", "pbAnnual"),
+    priceToSales: pick("psTTM", "psAnnual"),
+    evToEbitda: pick("evEbitdaTTM", "currentEv/ebitdaTTM", "evEbitdaAnnual"),
+    evToRevenue: pick(
+      "evRevenueTTM",
+      "currentEv/revenueTTM",
+      "evRevenueAnnual",
+    ),
+    dividendYield: pct(
+      "currentDividendYieldTTM",
+      "dividendYieldIndicatedAnnual",
+    ),
+    payoutRatio: pct("payoutRatioTTM", "payoutRatioAnnual"),
+    grossMargin: pct("grossMarginTTM", "grossMarginAnnual"),
+    operatingMargin: pct("operatingMarginTTM", "operatingMarginAnnual"),
+    profitMargin: pct("netProfitMarginTTM", "netProfitMarginAnnual"),
+    returnOnEquity: pct("roeTTM", "roeRfy"),
+    revenueGrowth: pct("revenueGrowthTTMYoy", "revenueGrowthQuarterlyYoy"),
+    earningsGrowth: pct("epsGrowthTTMYoy", "epsGrowthQuarterlyYoy"),
+    debtToEquity: pick(
+      "totalDebt/totalEquityQuarterly",
+      "totalDebt/totalEquityAnnual",
+    ),
+    currentRatio: pick("currentRatioQuarterly", "currentRatioAnnual"),
+    eps: pick("epsTTM", "epsBasicExclExtraItemsTTM", "epsExclExtraItemsTTM"),
+    beta: pick("beta"),
+  };
+  for (const k of Object.keys(out) as (keyof StockMetrics)[])
+    if (out[k] === undefined) delete out[k];
+  return Object.keys(out).length ? out : null;
 }
 
 const SYMBOLS: Record<string, string> = {
   GBP: "£",
   GBp: "£",
+  GBX: "£",
   USD: "$",
   EUR: "€",
   JPY: "¥",
@@ -156,7 +110,7 @@ const SYMBOLS: Record<string, string> = {
 export const ccySign = (currency?: string) =>
   currency ? (SYMBOLS[currency] ?? `${currency} `) : "";
 
-/** 2.31tn / 456bn / 12.3m with a currency sign; LSE's pence-quoted caps are still in pounds. */
+/** 2.31tn / 456bn / 12.3m with a currency sign. */
 export function fmtMoney(v: number, currency?: string): string {
   const sign = v < 0 ? "-" : "";
   const a = Math.abs(v);
@@ -169,8 +123,7 @@ export function fmtMoney(v: number, currency?: string): string {
           ? [a / 1e6, "m"]
           : [a, ""];
   const digits = n >= 100 ? 0 : n >= 10 ? 1 : 2;
-  const cur = ccySign(currency);
-  return `${sign}${cur}${n.toFixed(digits)}${unit}`;
+  return `${sign}${ccySign(currency)}${n.toFixed(digits)}${unit}`;
 }
 
 /** Share counts and volumes: 1.2bn, 34.5m, 980k. */

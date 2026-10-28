@@ -1244,50 +1244,23 @@ test("annualToSemiannual converts giltsyield's annual-basis yields", () => {
   assert.ok(Math.abs(annualToSemiannual(0) - 0) < 1e-12);
 });
 
-test("quote summary parses into stock metrics", async () => {
-  const { parseQuoteSummary, median, fmtMoney } =
-    await import("./stock-metrics");
-  const json = {
-    quoteSummary: {
-      result: [
-        {
-          price: {
-            regularMarketPrice: { raw: 452.3 },
-            marketCap: { raw: 7.1e10 },
-            currency: "GBp",
-          },
-          summaryDetail: {
-            trailingPE: { raw: 8.2 },
-            forwardPE: { raw: 7.4 },
-            dividendYield: { raw: 0.041 },
-            fiftyTwoWeekHigh: { raw: 480 },
-            fiftyTwoWeekLow: { raw: 300 },
-          },
-          defaultKeyStatistics: {
-            priceToBook: { raw: 0.9 },
-            enterpriseToEbitda: {},
-          },
-          financialData: {
-            targetMeanPrice: { raw: 500 },
-            recommendationKey: "strong_buy",
-            financialCurrency: "GBP",
-          },
-        },
-      ],
+test("Finnhub basic financials parse into stock metrics", async () => {
+  const { parseFinnhubMetric, fmtMoney } = await import("./stock-metrics");
+  const m = parseFinnhubMetric({
+    metric: {
+      marketCapitalization: 71000,
+      peTTM: 8.2,
+      currentDividendYieldTTM: 4.1,
+      "totalDebt/totalEquityQuarterly": 1.5,
+      beta: null,
     },
-  };
-  const m = parseQuoteSummary(json, "2026-10-28T07:00:00Z")!;
-  assert.equal(m.price, 452.3);
+  })!;
+  assert.equal(m.marketCap, 7.1e10);
   assert.equal(m.trailingPE, 8.2);
-  assert.equal(m.recommendation, "strong buy");
-  assert.equal(m.currency, "GBp");
-  assert.ok(!("evToEbitda" in m));
-  assert.equal(
-    parseQuoteSummary({ quoteSummary: { result: [{}] } }, "x"),
-    null,
-  );
-  assert.equal(median([3, undefined, 1, 2, -5]), 2);
-  assert.equal(median([1, 2]), undefined);
+  assert.ok(Math.abs(m.dividendYield! - 0.041) < 1e-12);
+  assert.equal(m.debtToEquity, 1.5);
+  assert.ok(!("beta" in m));
+  assert.equal(parseFinnhubMetric({ metric: {} }), null);
   assert.equal(fmtMoney(7.1e10, "GBP"), "£71.0bn");
   assert.equal(fmtMoney(2.31e12, "USD"), "$2.31tn");
 });
@@ -1312,4 +1285,35 @@ test("price tools: moving average, alignment and range stats", async () => {
   assert.equal(s.high, 121);
   assert.ok(Math.abs(s.maxDrawdown - -10) < 1e-9);
   assert.equal(rangeStart("2026-10-28", "YTD"), "2025-12-31");
+});
+
+test("global tickers map to stock-page symbols", async () => {
+  const { pageSymbolFor, usExchangeOf, marketName } =
+    await import("./global-symbols");
+  const cat = new Map([
+    ["BP.L", "LSE:BP."],
+    ["AAPL", "NASDAQ:AAPL"],
+  ]);
+  assert.equal(pageSymbolFor("bp.l", cat), "LSE:BP.");
+  assert.equal(pageSymbolFor("BT-A.L", cat), "LSE:BT.A");
+  assert.equal(pageSymbolFor("0700.HK", cat), "HKEX:700");
+  assert.equal(pageSymbolFor("ASML.AS", cat), "YF:ASML.AS");
+  assert.equal(pageSymbolFor("BRK.B", cat), "US:BRK.B");
+  assert.equal(pageSymbolFor("SHOP", cat, "NYSE"), "NYSE:SHOP");
+  assert.equal(pageSymbolFor("AAPL", cat), "NASDAQ:AAPL");
+  assert.equal(pageSymbolFor("^FTSE", cat), null);
+  assert.equal(usExchangeOf("NASDAQ NMS - GLOBAL MARKET"), "NASDAQ");
+  assert.equal(usExchangeOf("NEW YORK STOCK EXCHANGE, INC."), "NYSE");
+  assert.equal(usExchangeOf("NYQ"), "NYSE");
+  assert.equal(marketName("YF:NESN.SW"), "Swiss");
+});
+
+test("all-caps company names are tidied", async () => {
+  const { tidyName } = await import("./global-symbols");
+  assert.equal(
+    tidyName("LLOYDS BANKING GROUP PLC ADR"),
+    "Lloyds Banking Group PLC ADR",
+  );
+  assert.equal(tidyName("ASML HOLDING NV"), "ASML Holding NV");
+  assert.equal(tidyName("Apple Inc"), "Apple Inc");
 });

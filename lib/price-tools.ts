@@ -76,6 +76,7 @@ export function rangeStats(points: Pt[]): RangeStats | null {
 
 /** Start date for a range key, counting back from the last date. */
 export function rangeStart(last: string, key: string): string {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(last)) return "0000";
   if (key === "YTD") return `${Number(last.slice(0, 4)) - 1}-12-31`;
   const days: Record<string, number> = {
     "1M": 31,

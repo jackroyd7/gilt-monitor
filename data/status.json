@@ -69,11 +69,6 @@
       "checkedAt": "2026-10-28T23:31:46.291Z",
       "latestDate": "2026-10-28",
       "message": "346/353 UK, European and Asian stocks, sector ETFs and commodity futures"
-    },
-    "stock_metrics": {
-      "ok": false,
-      "checkedAt": "2026-10-28T23:31:46.291Z",
-      "message": "couldn't get a Yahoo session (query1 crumb 429; query2 crumb 429; finance.yahoo.com fetch failed; query1 crumb 429; query2 crumb 429)"
     }
   }
 }

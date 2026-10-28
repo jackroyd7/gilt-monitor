@@ -1,6 +1,7 @@
 import { connection } from "next/server";
 import EarningsCalendar from "@/components/EarningsCalendar";
 import EquitiesBoard from "@/components/EquitiesBoard";
+import GlobalStockSearch from "@/components/GlobalStockSearch";
 import HeadlineList from "@/components/HeadlineList";
 import MarketsBoard, { TickerTape } from "@/components/MarketsBoard";
 import { PageHeader } from "@/components/Tiles";
@@ -22,6 +23,7 @@ export default async function EquitiesPage() {
       </PageHeader>
       <TickerTape />
       <div className="space-y-4">
+        <GlobalStockSearch />
         <MarketsBoard groups={["Equity indices"]} />
         <EquitiesBoard quotes={quotes} />
         <section className="card p-4">

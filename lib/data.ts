@@ -6,7 +6,6 @@ import type { CommodityData } from "./commodities";
 import type { PolicyData } from "./policy";
 import type { RatesData } from "./rates";
 import type { StockQuotes } from "./stocks";
-import type { StockMetricsFile } from "./stock-metrics";
 import type { CotHistory, FxHistory } from "./fx";
 import type { MacroData } from "./macro";
 import { withLatestCloses } from "./history";
@@ -52,11 +51,6 @@ export async function loadCommodities(): Promise<CommodityData | undefined> {
 /** Daily quotes for UK, European and Asian stocks. */
 export async function loadStockQuotes(): Promise<StockQuotes | undefined> {
   return readJson<StockQuotes>(path.join(dataDir(), "stocks.json"));
-}
-
-/** Valuation and fundamental metrics per stock, refreshed daily. */
-export async function loadStockMetrics(): Promise<StockMetricsFile | undefined> {
-  return readJson<StockMetricsFile>(path.join(dataDir(), "stock-metrics.json"));
 }
 
 /** US breakevens, real yields and overnight / policy rates. */
