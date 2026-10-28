@@ -26,6 +26,8 @@ import { fetchCommodities } from "./sources/commodities";
 import { fetchPolicy } from "./sources/policy";
 import { fetchRates } from "./sources/rates";
 import { fetchStockQuotes } from "./sources/stocks";
+import { fetchStockMetrics } from "./sources/stock-metrics";
+import type { StockMetricsFile } from "../lib/stock-metrics";
 import { fetchUst } from "./sources/ust";
 
 const DATA = path.resolve(process.env.DATA_DIR ?? "data");
@@ -155,6 +157,17 @@ async function main() {
     await writeFile(file, JSON.stringify(data) + "\n");
     const latest = Object.values(data.quotes).map((q) => q.time.slice(0, 10)).sort().pop();
     return { latestDate: latest, message: `${ok}/${total} UK, European and Asian stocks, sector ETFs and commodity futures` };
+  });
+
+  await run("stock_metrics", async () => {
+    const file = path.join(DATA, "stock-metrics.json");
+    const { data, ok, total, skipped } = await fetchStockMetrics(await readJson<StockMetricsFile>(file), process.argv.includes("--metrics"));
+    if (skipped) return { latestDate: data.updatedAt.slice(0, 10), message: `${ok} stocks (refreshed daily)` };
+    if (!ok) throw new Error(`no metrics for any of ${total} stocks`);
+    // One stock per line keeps the daily diff readable.
+    const lines = Object.keys(data.stocks).sort().map((k) => `    ${JSON.stringify(k)}: ${JSON.stringify(data.stocks[k])}`);
+    await writeFile(file, `{\n  "updatedAt": ${JSON.stringify(data.updatedAt)},\n  "stocks": {\n${lines.join(",\n")}\n  }\n}\n`);
+    return { latestDate: data.updatedAt.slice(0, 10), message: `${ok}/${total} stocks` };
   });
 
   let dmoSnapshot: GiltSnapshot | undefined;
