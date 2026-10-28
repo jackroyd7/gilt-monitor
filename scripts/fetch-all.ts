@@ -13,11 +13,13 @@ import { fetchAllPrices } from "../lib/live-core";
 import type { CurveSet, DataStatus, GiltHistory, GiltSnapshot } from "../lib/types";
 import type { CotHistory, FxHistory } from "../lib/fx";
 import type { MacroData } from "../lib/macro";
+import type { CommodityData } from "../lib/commodities";
 import { fetchBoe } from "./sources/boe";
 import { fetchBundesbank } from "./sources/bundesbank";
 import { fetchDmo } from "./sources/dmo";
 import { fetchBoeFx, fetchCot } from "./sources/fx";
 import { fetchMacro } from "./sources/macro";
+import { fetchCommodities } from "./sources/commodities";
 import { fetchUst } from "./sources/ust";
 
 const DATA = path.resolve(process.env.DATA_DIR ?? "data");
@@ -112,6 +114,15 @@ async function main() {
     await writeFile(file, JSON.stringify(data) + "\n");
     const latest = Object.values(data.series).map((s) => s.points[s.points.length - 1]?.[0] ?? "").sort().pop();
     return { latestDate: latest, message: `${Object.keys(data.series).length} series${failures.length ? `; ${failures.length} failed: ${failures.join(" | ")}` : ""}` };
+  });
+
+  await run("commodities", async () => {
+    const file = path.join(DATA, "commodities.json");
+    const { data, failures } = await fetchCommodities(await readJson<CommodityData>(file), keepFrom, addDays(today, -3 * 365));
+    if (!Object.keys(data.prices).length && !Object.keys(data.cot).length) throw new Error(failures.join("; ") || "no data");
+    await writeFile(file, JSON.stringify(data) + "\n");
+    const latest = Object.values(data.prices).map((p) => p?.[p.length - 1]?.[0] ?? "").sort().pop();
+    return { latestDate: latest, message: failures.length ? `failed: ${failures.join(" | ")}` : `${Object.keys(data.prices).length} prices, ${Object.keys(data.cot).length} positioning` };
   });
 
   let dmoSnapshot: GiltSnapshot | undefined;

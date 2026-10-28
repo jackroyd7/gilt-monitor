@@ -2,6 +2,7 @@ import "server-only";
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 import type { Briefing } from "./briefing";
+import type { CommodityData } from "./commodities";
 import type { CotHistory, FxHistory } from "./fx";
 import type { MacroData } from "./macro";
 import { withLatestCloses } from "./history";
@@ -37,6 +38,11 @@ export async function loadGiltHistory(): Promise<GiltHistory | undefined> {
 export async function loadFx(): Promise<{ fx: FxHistory | undefined; cot: CotHistory | undefined }> {
   const [fx, cot] = await Promise.all([readJson<FxHistory>(path.join(dataDir(), "fx.json")), readJson<CotHistory>(path.join(dataDir(), "cot.json"))]);
   return { fx, cot };
+}
+
+/** Commodity prices, US crude stocks and CFTC positioning. */
+export async function loadCommodities(): Promise<CommodityData | undefined> {
+  return readJson<CommodityData>(path.join(dataDir(), "commodities.json"));
 }
 
 /** Today's (or the latest) morning briefing. */

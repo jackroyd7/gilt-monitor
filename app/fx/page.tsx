@@ -8,7 +8,8 @@ import { SeriesChart } from "@/components/charts";
 import { rateSA } from "@/lib/analytics";
 import { addDays, dateOnOrBefore, latestDate, sortedDates } from "@/lib/curve";
 import { loadFx, loadMarket } from "@/lib/data";
-import { COT_CONTRACTS, FX_SERIES, cotNet, fxSeries, pctChange, realisedVol, rollingCorrelation, rollingVol, type Point } from "@/lib/fx";
+import { COT_CONTRACTS, FX_SERIES, fxSeries, pctChange, realisedVol, rollingCorrelation, rollingVol, type Point } from "@/lib/fx";
+import { cotRowsFor } from "@/lib/cot-view";
 import { getNews } from "@/lib/news-fetch";
 import type { CurveSet } from "@/lib/types";
 
@@ -80,23 +81,7 @@ export default async function FxPage() {
     { pair: "GBP vs EUR (Bunds)", y1: gap(uk, curves.de_bund, 1), y2: gap(uk, curves.de_bund, 2) },
   ];
 
-  const cotRows: CotSeries[] = COT_CONTRACTS.map((c) => {
-    const h = cotNet(cot?.rows[c.id]);
-    const a = h[h.length - 1];
-    const b = h[h.length - 2];
-    return {
-      id: c.id,
-      name: c.name,
-      date: a?.date,
-      assetManagers: a?.assetManagers ?? null,
-      leveraged: a?.leveraged ?? null,
-      amChange: a && b ? a.assetManagers - b.assetManagers : null,
-      levChange: a && b ? a.leveraged - b.leveraged : null,
-      amPctOi: a?.oi ? (a.assetManagers / a.oi) * 100 : null,
-      levPctOi: a?.oi ? (a.leveraged / a.oi) * 100 : null,
-      history: h.map(({ date, assetManagers, leveraged }) => ({ date, assetManagers, leveraged })),
-    };
-  });
+  const cotRows: CotSeries[] = cotRowsFor(COT_CONTRACTS, cot?.rows);
 
   const fxNews = news.items.filter((i) => i.topics.includes("fx")).slice(0, 10);
   const fmtGap = (v: number | null) => (v == null ? "–" : `${v > 0 ? "+" : ""}${v.toFixed(0)}bp`);

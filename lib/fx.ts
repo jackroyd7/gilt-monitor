@@ -82,27 +82,53 @@ const num = (v: unknown) => {
   return Number.isFinite(n) ? n : null;
 };
 
-/** Parses CFTC public-reporting JSON (Socrata) rows, finding fields by name pattern. */
-export function parseCot(records: Record<string, unknown>[]): CotHistory["rows"] {
-  const out: CotHistory["rows"] = {};
+/** Field-name patterns for the two trader groups a CFTC report is read for. */
+export interface CotFields {
+  aLong: RegExp;
+  aShort: RegExp;
+  bLong: RegExp;
+  bShort: RegExp;
+}
+const TFF_FIELDS: CotFields = {
+  aLong: /^asset_mgr_positions_long(_all)?$/,
+  aShort: /^asset_mgr_positions_short(_all)?$/,
+  bLong: /^lev_money_positions_long(_all)?$/,
+  bShort: /^lev_money_positions_short(_all)?$/,
+};
+
+/**
+ * Parses CFTC public-reporting JSON (Socrata) rows, finding fields by name pattern.
+ * Group "a" is stored as amLong/amShort and group "b" as levLong/levShort.
+ */
+export function parseCotWith<Id extends string>(
+  records: Record<string, unknown>[],
+  contracts: readonly { id: Id; code: string }[],
+  fields: CotFields,
+): Partial<Record<Id, Record<string, CotRow>>> {
+  const out: Partial<Record<Id, Record<string, CotRow>>> = {};
   for (const r of records) {
     const code = String(r.cftc_contract_market_code ?? "").trim();
-    const c = COT_CONTRACTS.find((x) => x.code === code);
+    const c = contracts.find((x) => x.code === code);
     const date = String(r.report_date_as_yyyy_mm_dd ?? "").slice(0, 10);
     if (!c || !/^\d{4}-\d{2}-\d{2}$/.test(date)) continue;
     const field = (re: RegExp) => num(Object.entries(r).find(([k]) => re.test(k))?.[1]);
     const row = {
       oi: field(/^open_interest_all$/),
-      amLong: field(/^asset_mgr_positions_long(_all)?$/),
-      amShort: field(/^asset_mgr_positions_short(_all)?$/),
-      levLong: field(/^lev_money_positions_long(_all)?$/),
-      levShort: field(/^lev_money_positions_short(_all)?$/),
+      amLong: field(fields.aLong),
+      amShort: field(fields.aShort),
+      levLong: field(fields.bLong),
+      levShort: field(fields.bShort),
     };
     if (Object.values(row).some((v) => v == null)) continue;
-    (out[c.id] ??= {})[date] = row as CotRow;
+    const byDate: Record<string, CotRow> = out[c.id] ?? {};
+    byDate[date] = row as CotRow;
+    out[c.id] = byDate as (typeof out)[Id];
   }
   return out;
 }
+
+/** Traders in Financial Futures: asset managers ("a") and leveraged funds ("b"). */
+export const parseCot = (records: Record<string, unknown>[]): CotHistory["rows"] => parseCotWith(records, COT_CONTRACTS, TFF_FIELDS);
 
 // ---------- analytics ----------
 

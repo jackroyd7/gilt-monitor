@@ -320,24 +320,33 @@ const signed = (v: number | null) =>
     : `${v > 0 ? "+" : ""}${Math.round(v).toLocaleString("en-GB")}`;
 
 /** CFTC net futures positions by trader group. */
-export function Positioning({ rows }: { rows: CotSeries[] }) {
+export function Positioning({
+  rows,
+  title = "Positioning (CFTC futures)",
+  subtitle = "Net long contracts on CME currency futures, weekly (positions as of Tuesday, published Friday).",
+  groups = ["Asset managers", "Leveraged funds"],
+  label = "Currency",
+}: {
+  rows: CotSeries[];
+  title?: string;
+  subtitle?: string;
+  groups?: [string, string];
+  label?: string;
+}) {
   const [id, setId] = useState(rows[0]?.id);
   const r = rows.find((x) => x.id === id) ?? rows[0];
-  if (!r) return <Card title="Positioning">No CFTC data yet.</Card>;
+  if (!r) return <Card title={title}>No CFTC data yet.</Card>;
   return (
-    <Card
-      title="Positioning (CFTC futures)"
-      subtitle={`Net long contracts on CME currency futures, weekly (positions as of Tuesday, published Friday). Latest ${r.date ?? "–"}.`}
-    >
+    <Card title={title} subtitle={`${subtitle} Latest ${r.date ?? "–"}.`}>
       <div className="overflow-x-auto">
         <table className="w-full text-sm">
           <thead>
             <tr className="text-left text-xs text-muted">
-              <th className="py-1 font-normal">Currency</th>
-              <th className="py-1 text-right font-normal">Asset managers</th>
+              <th className="py-1 font-normal">{label}</th>
+              <th className="py-1 text-right font-normal">{groups[0]}</th>
               <th className="py-1 text-right font-normal">1w chg</th>
               <th className="py-1 text-right font-normal">% OI</th>
-              <th className="py-1 text-right font-normal">Leveraged funds</th>
+              <th className="py-1 text-right font-normal">{groups[1]}</th>
               <th className="py-1 text-right font-normal">1w chg</th>
               <th className="py-1 text-right font-normal">% OI</th>
             </tr>
@@ -385,13 +394,13 @@ export function Positioning({ rows }: { rows: CotSeries[] }) {
         series={[
           {
             key: "am",
-            name: "Asset managers",
+            name: groups[0],
             color: "var(--series-1)",
             points: r.history.map((h) => [h.date, h.assetManagers]),
           },
           {
             key: "lev",
-            name: "Leveraged funds",
+            name: groups[1],
             color: "var(--series-2)",
             points: r.history.map((h) => [h.date, h.leveraged]),
           },

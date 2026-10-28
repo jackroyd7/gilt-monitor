@@ -195,6 +195,24 @@ function demoMacro() {
 async function main() {
   await mkdir(path.join(DIR, "curves"), { recursive: true });
   await writeFile(path.join(DIR, "macro.json"), JSON.stringify(demoMacro()));
+  {
+    const series = (start: number, vol: number, every = 1) => {
+      let v = start;
+      return dates.filter((_, i) => i % every === 0).map((d) => [d, +(v *= Math.exp(vol * gauss())).toFixed(2)] as [string, number]);
+    };
+    const cot: Record<string, Record<string, Record<string, number>>> = {};
+    for (const id of ["CRUDE", "NATGAS", "GOLD", "SILVER", "COPPER", "CORN", "WHEAT", "SOYBEANS"]) {
+      const mm = walk(0, 8000);
+      cot[id] = {};
+      dates.forEach((d, i) => {
+        if (new Date(d + "T00:00:00Z").getUTCDay() === 2) cot[id][d] = { oi: 500000, amLong: 150000 + mm[i], amShort: 100000, levLong: 200000, levShort: 260000 + mm[i] };
+      });
+    }
+    await writeFile(
+      path.join(DIR, "commodities.json"),
+      JSON.stringify({ updatedAt: new Date().toISOString(), prices: { BRENT: series(80, 0.018), WTI: series(76, 0.019), HH: series(3, 0.03), CRUDE_STOCKS: series(430, 0.008, 5) }, cot }),
+    );
+  }
   await writeFile(
     path.join(DIR, "briefing.json"),
     JSON.stringify({
@@ -218,7 +236,7 @@ async function main() {
   const status: DataStatus = {
     updatedAt: now,
     demo: true,
-    sources: Object.fromEntries(["boe", "bundesbank", "ust", "dmo", "boe_fx", "cftc", "macro"].map((k) => [k, { ok: true, checkedAt: now, latestDate: end, message: "demo" }])),
+    sources: Object.fromEntries(["boe", "bundesbank", "ust", "dmo", "boe_fx", "cftc", "macro", "commodities"].map((k) => [k, { ok: true, checkedAt: now, latestDate: end, message: "demo" }])),
   };
   await writeFile(path.join(DIR, "status.json"), JSON.stringify(status, null, 2));
   console.log(`Wrote synthetic data for ${dates.length} days and ${gilts.length} gilts to ${DIR}`);
