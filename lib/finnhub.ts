@@ -92,6 +92,10 @@ export interface CompanyProfile {
   /** Absolute amounts in the listing currency. */
   marketCap?: number;
   shares?: number;
+  /** From Yahoo, when available. */
+  sector?: string;
+  employees?: number;
+  summary?: string;
 }
 
 export async function companyProfile(

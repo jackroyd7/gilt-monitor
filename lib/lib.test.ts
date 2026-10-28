@@ -1317,3 +1317,80 @@ test("all-caps company names are tidied", async () => {
   assert.equal(tidyName("ASML HOLDING NV"), "ASML Holding NV");
   assert.equal(tidyName("Apple Inc"), "Apple Inc");
 });
+
+test("Yahoo quote summary parses metrics, analysts and results", async () => {
+  const { parseYahooSummary } = await import("./yahoo-parse");
+  const y = parseYahooSummary(
+    {
+      quoteSummary: {
+        result: [
+          {
+            price: {
+              marketCap: { raw: 4.1e10 },
+              currency: "GBp",
+              longName: "Lloyds Banking Group plc",
+            },
+            summaryDetail: {
+              trailingPE: { raw: 9.5 },
+              dividendYield: { raw: 0.052 },
+            },
+            financialData: {
+              debtToEquity: { raw: 250 },
+              targetMeanPrice: { raw: 80 },
+              numberOfAnalystOpinions: { raw: 18 },
+            },
+            assetProfile: {
+              sector: "Financial Services",
+              fullTimeEmployees: 60000,
+            },
+            recommendationTrend: {
+              trend: [
+                {
+                  period: "0m",
+                  strongBuy: 5,
+                  buy: 8,
+                  hold: 4,
+                  sell: 0,
+                  strongSell: 0,
+                },
+                {
+                  period: "-1m",
+                  strongBuy: 0,
+                  buy: 0,
+                  hold: 0,
+                  sell: 0,
+                  strongSell: 0,
+                },
+              ],
+            },
+            earningsHistory: {
+              history: [
+                {
+                  quarter: { raw: 1751241600 },
+                  epsActual: { raw: 0.02 },
+                  epsEstimate: { raw: 0.018 },
+                  surprisePercent: { raw: 0.111 },
+                },
+              ],
+            },
+            calendarEvents: {
+              earnings: { earningsDate: [{ raw: 1798000000 }] },
+            },
+          },
+        ],
+      },
+    },
+    new Date("2026-10-28T12:00:00Z"),
+  )!;
+  assert.equal(y.metrics?.marketCap, 4.1e10);
+  assert.equal(y.metrics?.debtToEquity, 2.5);
+  assert.equal(y.metrics?.dividendYield, 0.052);
+  assert.equal(y.currency, "GBp");
+  assert.equal(y.profile.employees, 60000);
+  assert.equal(y.recs.length, 1);
+  assert.equal(y.recs[0].period, "2026-10-01");
+  assert.equal(y.results[0].period, "2025-06-30");
+  assert.ok(Math.abs(y.results[0].surprisePct! - 11.1) < 1e-9);
+  assert.equal(y.next?.date, "2026-12-23");
+  assert.deepEqual(y.target, { mean: 80, analysts: 18 });
+});

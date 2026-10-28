@@ -248,15 +248,19 @@ export function MetricsCard({
   profile,
   currency,
   hasKey,
+  source = "Finnhub",
+  missing,
 }: {
   m: StockMetrics | null;
   profile: CompanyProfile | null;
+  /** Currency of market cap and enterprise value. */
   currency?: string;
   hasKey: boolean;
+  source?: string;
+  /** Why there are no figures, when there aren't. */
+  missing?: string;
 }) {
-  const cur =
-    profile?.currency ??
-    (currency === "GBp" || currency === "GBX" ? "GBP" : currency);
+  const cur = currency === "GBp" || currency === "GBX" ? "GBP" : currency;
   const cap = m?.marketCap ?? profile?.marketCap;
   if (!m && cap == null) {
     return (
@@ -264,7 +268,7 @@ export function MetricsCard({
         <h2 className="text-sm font-semibold text-ink">Key metrics</h2>
         <p className="mt-1 text-sm text-muted">
           {hasKey
-            ? "Finnhub's free plan has no valuation data for this listing."
+            ? `No valuation figures available: ${missing ?? "none of our sources cover this listing"}.`
             : "Set FINNHUB_API_KEY in Vercel to show valuation and fundamentals."}
         </p>
       </section>
@@ -345,7 +349,7 @@ export function MetricsCard({
       <div className="mb-3 flex flex-wrap items-baseline justify-between gap-2">
         <h2 className="text-sm font-semibold text-ink">Key metrics</h2>
         <span className="text-xs text-muted">
-          Finnhub, latest reported figures
+          {source}, latest reported figures
         </span>
       </div>
       <div className="grid gap-x-8 gap-y-4 md:grid-cols-2">
@@ -372,12 +376,20 @@ export function EarningsAnalystsCard({
   next,
   results,
   recs,
+  resultsNote,
+  target,
+  price,
 }: {
   next: { date: string; hour?: string; epsEstimate?: number } | null;
   results: EarningsResult[];
   recs: Recommendation[];
+  resultsNote?: string;
+  /** Analysts' mean price target, in the quote currency. */
+  target?: { mean: number; analysts?: number; currency?: string };
+  price?: number;
 }) {
   if (!next && !results.length && !recs.length) return null;
+  const upside = target && price ? (target.mean / price - 1) * 100 : undefined;
   const r = recs[0];
   const total = r ? r.strongBuy + r.buy + r.hold + r.sell + r.strongSell : 0;
   const parts = r
@@ -461,6 +473,9 @@ export function EarningsAnalystsCard({
               </tbody>
             </table>
           )}
+          {resultsNote && results.length > 0 && (
+            <p className="mt-1 text-[11px] text-muted">{resultsNote}</p>
+          )}
         </div>
         {r && total > 0 && (
           <div>
@@ -519,6 +534,25 @@ export function EarningsAnalystsCard({
             <p className="mt-1 text-[11px] text-muted">
               As of {r.period.slice(0, 7)}
             </p>
+            {target && (
+              <p className="mt-2 text-sm text-ink">
+                Mean price target{" "}
+                <span className="num font-semibold">
+                  {fmtPrice(target.mean, target.currency)}
+                </span>
+                {upside != null && (
+                  <span className="num ml-1">
+                    (<Pct v={upside} dp={0} /> from here)
+                  </span>
+                )}
+                {target.analysts ? (
+                  <span className="text-xs text-muted">
+                    {" "}
+                    · {target.analysts} analysts
+                  </span>
+                ) : null}
+              </p>
+            )}
           </div>
         )}
       </div>
@@ -536,8 +570,13 @@ export function ProfileCard({
 }) {
   if (!profile) return null;
   const rows: [string, React.ReactNode][] = [
+    ["Sector", profile.sector],
     ["Industry", profile.industry],
     ["Country", profile.country],
+    [
+      "Employees",
+      profile.employees ? profile.employees.toLocaleString("en-GB") : undefined,
+    ],
     ["Exchange", profile.exchange],
     ["Listed since", profile.ipo ? dmy(profile.ipo) : undefined],
     ["Reporting currency", profile.currency],
@@ -585,6 +624,14 @@ export function ProfileCard({
             </div>
           ))}
       </dl>
+      {profile.summary && (
+        <details className="mt-2 text-sm text-ink-2">
+          <summary className="cursor-pointer text-xs text-accent">
+            About the company
+          </summary>
+          <p className="mt-1 leading-relaxed">{profile.summary}</p>
+        </details>
+      )}
     </section>
   );
 }
