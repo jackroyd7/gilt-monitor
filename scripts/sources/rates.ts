@@ -1,6 +1,6 @@
 import { parseFredCsv } from "../../lib/macro";
 import { RATE_SERIES, type RatesData } from "../../lib/rates";
-import { fetchFrenchYields } from "./ecb-yields";
+import { fetchFrenchYields } from "./fr-yields";
 import { getText } from "./http";
 
 /** FRED daily series for the Rates tab; a failed series keeps its previous data. */
@@ -25,7 +25,7 @@ export async function fetchRates(previous: RatesData | undefined, since: string)
     franceKeys = fr.keys;
     console.log(`  France: ${Object.entries(fr.keys).map(([t, k]) => `${t}y ${k} → ${fr.series[t].at(-1)!.join(" ")}`).join("; ")}`);
   } catch (e) {
-    failures.push(`France (ECB): ${(e as Error).message}`);
+    failures.push(`France: ${(e as Error).message}`);
   }
   return { data: { updatedAt: new Date().toISOString(), series, france, franceKeys } as RatesData, failures };
 }

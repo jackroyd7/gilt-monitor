@@ -653,3 +653,10 @@ test("annualToSemiannual converts giltsyield's annual-basis yields", () => {
   assert.ok(Math.abs(annualToSemiannual(5.0625) - 5) < 1e-9);
   assert.ok(Math.abs(annualToSemiannual(0) - 0) < 1e-12);
 });
+
+import { parseStooqCsv } from "../scripts/sources/fr-yields";
+
+test("parseStooqCsv reads closes", () => {
+  assert.deepEqual(parseStooqCsv("Date,Open,High,Low,Close\n2026-10-27,3.40,3.45,3.38,3.42\n2026-10-28,3.42,3.44,3.39,3.41\n"), [["2026-10-27", 3.42], ["2026-10-28", 3.41]]);
+  assert.throws(() => parseStooqCsv("No data"));
+});

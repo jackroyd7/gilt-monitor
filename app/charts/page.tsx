@@ -54,7 +54,7 @@ async function ownYieldChart(symbol: string | undefined) {
       return (
         <div className="p-4">
           <SeriesChart series={[{ key: "y", name: `${tenor}y yield`, color: "var(--series-1)", points: pts }]} xKind="date" unit="pct" height={420} showLegend={false} />
-          <p className="mt-2 text-xs text-muted">End of day, French {tenor}-year benchmark OAT yield from the ECB, as TradingView&apos;s free charts don&apos;t include bond yields.</p>
+          <p className="mt-2 text-xs text-muted">End of day, French {tenor}-year benchmark OAT yield (Stooq), as TradingView&apos;s free charts don&apos;t include bond yields.</p>
         </div>
       );
     }
