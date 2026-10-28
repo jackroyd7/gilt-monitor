@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import {
   CartesianGrid,
   Line,
@@ -70,8 +70,8 @@ function Toggle({
 
 /**
  * Price chart with tools, for instruments charted from Yahoo Finance: date ranges or custom
- * dates, price or % change, moving averages, log scale, comparison with other instruments,
- * and a click-two-points measure of the % change between any two dates.
+ * dates, moving averages, log scale, comparison with other instruments (rebased to this
+ * one's price), and a measure of the % price change between any two points.
  */
 export default function PriceTool({
   points,
@@ -88,14 +88,14 @@ export default function PriceTool({
   const [range, setRange] = useState("1Y");
   const [from, setFrom] = useState("");
   const [to, setTo] = useState("");
-  const [pctMode, setPctMode] = useState(false);
   const [log, setLog] = useState(false);
   const [mas, setMas] = useState<Set<number>>(() => new Set());
   const [compares, setCompares] = useState<Compare[]>([]);
   const [picking, setPicking] = useState(false);
   const [measure, setMeasure] = useState<string[]>([]);
+  const plot = useRef<HTMLDivElement>(null);
+  const down = useRef<{ x: number; y: number } | null>(null);
 
-  const pct = pctMode || compares.length > 0;
   const start =
     range === "Custom" ? from || points[0]?.[0] || "" : rangeStart(last, range);
   const end = range === "Custom" && to ? to : last;
@@ -107,7 +107,7 @@ export default function PriceTool({
 
   const rows = useMemo(() => {
     const idx = points
-      .map((p, i) => i)
+      .map((_, i) => i)
       .filter((i) => points[i][0] >= start && points[i][0] <= end);
     if (!idx.length) return [] as Row[];
     const dates = idx.map((i) => points[i][0]);
@@ -117,29 +117,30 @@ export default function PriceTool({
     );
     const cmpBase = cmpVals.map((vals) => vals.find((v) => v != null));
     return idx.map((i, k) => {
-      const v = points[i][1];
       const row: Row = {
         x: toX(points[i][0]),
         d: points[i][0],
-        p: pct ? pctChange(base, v) : v,
-        raw: v,
+        p: points[i][1],
       };
       for (const m of MAS) {
         const a = maSeries[m.n][i];
-        if (mas.has(m.n) && a != null)
-          row[`m${m.n}`] = pct ? pctChange(base, a) : a;
+        if (mas.has(m.n) && a != null) row[`m${m.n}`] = a;
       }
+      // Comparisons start at this instrument's price, so the chart stays in price terms.
       cmpVals.forEach((vals, j) => {
         const b = cmpBase[j];
         const c = vals[k];
-        if (b != null && c != null) row[`c${j}`] = pctChange(b, c);
+        if (b != null && c != null) {
+          row[`c${j}`] = base * (c / b);
+          row[`cp${j}`] = pctChange(b, c);
+        }
       });
       return row;
     });
-  }, [points, start, end, pct, mas, maSeries, compares]);
+  }, [points, start, end, mas, maSeries, compares]);
 
   const stats = useMemo(
-    () => rangeStats(rows.map((r) => [r.d, r.raw as number] as Pt)),
+    () => rangeStats(rows.map((r) => [r.d, r.p] as Pt)),
     [rows],
   );
 
@@ -148,16 +149,34 @@ export default function PriceTool({
   const measured =
     ma && mb
       ? (() => {
+          // Always earlier → later, whichever point was clicked first.
           const [a, b] = ma.d <= mb.d ? [ma, mb] : [mb, ma];
-          const days = Math.round((b.x - a.x) / 86_400_000);
           return {
             a,
             b,
-            change: pctChange(a.raw as number, b.raw as number),
-            days,
+            change: pctChange(a.p, b.p),
+            diff: b.p - a.p,
+            days: Math.round((b.x - a.x) / 86_400_000),
           };
         })()
       : null;
+  const fromPoint = measure.length === 1 ? ma : undefined;
+
+  // The row nearest the pointer, from where the click landed in the plot area (Recharts'
+  // own active index can lag behind the finger on touch screens).
+  const rowAtClient = (clientX: number) => {
+    const box = plot.current
+      ?.querySelector(".recharts-cartesian-grid")
+      ?.getBoundingClientRect();
+    if (!box || !box.width || rows.length < 2) return undefined;
+    const x0 = rows[0].x;
+    const x1 = rows[rows.length - 1].x;
+    const t = x0 + ((clientX - box.left) / box.width) * (x1 - x0);
+    let best = rows[0];
+    for (const r of rows)
+      if (Math.abs(r.x - t) < Math.abs(best.x - t)) best = r;
+    return best;
+  };
 
   const addCompare = (symbol: string, label: string) => {
     if (compares.length >= 3 || compares.some((c) => c.symbol === symbol))
@@ -188,12 +207,11 @@ export default function PriceTool({
   };
 
   const fmtY = (v: number) =>
-    pct
-      ? `${v.toFixed(v !== 0 && Math.abs(v) < 10 ? 1 : 0)}%`
-      : v >= 1000
-        ? v.toFixed(0)
-        : v.toFixed(v >= 100 ? 1 : 2);
-  const fmtP = (v: number) => `${v.toFixed(v >= 10_000 ? 0 : 2)}${unit}`;
+    v >= 1000 ? v.toFixed(0) : v.toFixed(v >= 100 ? 1 : 2);
+  const fmtP = (v: number) =>
+    `${v.toFixed(Math.abs(v) >= 10_000 ? 0 : 2)}${unit}`;
+  const measureTone =
+    measured && (measured.change >= 0 ? "var(--down)" : "var(--up)");
 
   return (
     <div className="space-y-3">
@@ -201,7 +219,14 @@ export default function PriceTool({
       <div className="flex flex-wrap items-center gap-2">
         <div className="flex flex-wrap gap-0.5 rounded-md bg-surface-2 p-0.5">
           {RANGES.map((r) => (
-            <Toggle key={r} on={range === r} onClick={() => setRange(r)}>
+            <Toggle
+              key={r}
+              on={range === r}
+              onClick={() => {
+                setRange(r);
+                setMeasure([]);
+              }}
+            >
               {r}
             </Toggle>
           ))}
@@ -245,26 +270,12 @@ export default function PriceTool({
         )}
         <div className="flex gap-0.5 rounded-md bg-surface-2 p-0.5">
           <Toggle
-            on={!pct}
-            onClick={() => compares.length === 0 && setPctMode(false)}
-            title={
-              compares.length ? "Comparisons are shown as % change" : undefined
-            }
+            on={log}
+            onClick={() => setLog((l) => !l)}
+            title="Logarithmic price scale"
           >
-            Price
+            Log scale
           </Toggle>
-          <Toggle on={pct} onClick={() => setPctMode(true)}>
-            % change
-          </Toggle>
-          {!pct && (
-            <Toggle
-              on={log}
-              onClick={() => setLog((l) => !l)}
-              title="Logarithmic price scale"
-            >
-              Log
-            </Toggle>
-          )}
         </div>
         <div className="flex gap-0.5 rounded-md bg-surface-2 p-0.5">
           {MAS.map((m) => (
@@ -289,6 +300,7 @@ export default function PriceTool({
           type="button"
           onClick={() => setPicking(true)}
           disabled={compares.length >= 3}
+          title="Overlay another instrument, rebased to this one's price at the start of the period"
           className="rounded-md border border-line px-2 py-0.5 text-xs text-ink-2 hover:text-ink disabled:opacity-50"
         >
           + Compare
@@ -346,11 +358,35 @@ export default function PriceTool({
               {m.n}-day average
             </span>
           ))}
+          {compares.length > 0 && (
+            <span className="text-muted">
+              Comparisons start from {name}&apos;s price on the first day shown
+            </span>
+          )}
         </div>
       )}
 
       {/* Chart */}
-      <div style={{ height }} className="w-full cursor-crosshair select-none [&_*:focus]:outline-none">
+      <div
+        ref={plot}
+        style={{ height }}
+        className="w-full cursor-crosshair touch-manipulation select-none [&_*:focus]:outline-none"
+        // Pointer events rather than click: the chart swallows taps on touch screens.
+        onPointerDown={(e) => {
+          down.current = { x: e.clientX, y: e.clientY };
+        }}
+        onPointerUp={(e) => {
+          const d = down.current;
+          down.current = null;
+          // A drag or scroll isn't a pick.
+          if (!d || Math.hypot(e.clientX - d.x, e.clientY - d.y) > 12) return;
+          const r = rowAtClient(e.clientX);
+          if (!r) return;
+          setMeasure((m) =>
+            m.length === 1 ? (m[0] === r.d ? m : [m[0], r.d]) : [r.d],
+          );
+        }}
+      >
         {rows.length < 2 ? (
           <div className="flex h-full items-center justify-center text-sm text-muted">
             No prices in this period
@@ -360,12 +396,6 @@ export default function PriceTool({
             <LineChart
               data={rows}
               margin={{ top: 8, right: 16, bottom: 0, left: 0 }}
-              onClick={(e) => {
-                const i = Number(e?.activeIndex ?? e?.activeTooltipIndex);
-                const r = Number.isFinite(i) ? rows[i] : undefined;
-                if (!r) return;
-                setMeasure((m) => (m.length === 1 ? [m[0], r.d] : [r.d]));
-              }}
             >
               <CartesianGrid vertical={false} strokeWidth={1} />
               <XAxis
@@ -379,18 +409,28 @@ export default function PriceTool({
               <YAxis
                 tick={AXIS_TICK}
                 width={52}
-                scale={!pct && log ? "log" : "auto"}
+                scale={log ? "log" : "auto"}
                 domain={["auto", "auto"]}
                 tickFormatter={fmtY}
-                allowDataOverflow={!pct && log}
+                allowDataOverflow={log}
               />
-              {pct && <ReferenceLine y={0} stroke="var(--axis)" />}
               {measured && (
                 <ReferenceArea
                   x1={measured.a.x}
                   x2={measured.b.x}
-                  fill="var(--accent)"
-                  fillOpacity={0.08}
+                  fill={measureTone!}
+                  fillOpacity={0.07}
+                />
+              )}
+              {measured && (
+                <ReferenceLine
+                  segment={[
+                    { x: measured.a.x, y: measured.a.p },
+                    { x: measured.b.x, y: measured.b.p },
+                  ]}
+                  stroke={measureTone!}
+                  strokeDasharray="4 3"
+                  strokeWidth={1.5}
                 />
               )}
               {[ma, mb].map(
@@ -400,9 +440,10 @@ export default function PriceTool({
                       key={k}
                       x={r.x}
                       y={r.p}
-                      r={4}
+                      r={5}
                       fill="var(--accent)"
                       stroke="var(--surface)"
+                      strokeWidth={2}
                     />
                   ),
               )}
@@ -413,34 +454,45 @@ export default function PriceTool({
                     ? (payload?.[0]?.payload as Row | undefined)
                     : undefined;
                   if (!r) return null;
+                  // With one point picked, show the change from that point to the one under the cursor.
+                  const since =
+                    fromPoint && fromPoint.d !== r.d
+                      ? fromPoint.d < r.d
+                        ? pctChange(fromPoint.p, r.p)
+                        : pctChange(r.p, fromPoint.p)
+                      : null;
                   return (
                     <div className="card px-3 py-2 text-xs shadow-sm">
                       <div className="mb-1 font-medium text-ink">
                         {dmy(r.d)}
                       </div>
-                      <div className="num text-ink">
-                        {fmtP(r.raw as number)}
-                        {pct && (
-                          <span className="ml-2" style={tone(r.p)}>
-                            {signed(r.p)}
-                          </span>
-                        )}
-                      </div>
+                      <div className="num text-ink">{fmtP(r.p)}</div>
                       {compares.map((c, j) =>
-                        r[`c${j}`] == null ? null : (
+                        r[`cp${j}`] == null ? null : (
                           <div key={c.symbol} className="num text-ink-2">
                             {c.name}{" "}
-                            <span style={tone(r[`c${j}`] as number)}>
-                              {signed(r[`c${j}`] as number)}
+                            <span style={tone(r[`cp${j}`] as number)}>
+                              {signed(r[`cp${j}`] as number)}
                             </span>
                           </div>
                         ),
                       )}
-                      <div className="mt-1 text-[10px] text-muted">
-                        {measure.length === 1
-                          ? "Click a second point to measure"
-                          : "Click to start measuring"}
-                      </div>
+                      {since != null ? (
+                        <div className="num mt-1 text-ink-2">
+                          {fromPoint!.d < r.d
+                            ? `Since ${dmy(fromPoint!.d)}`
+                            : `To ${dmy(fromPoint!.d)}`}{" "}
+                          <span className="font-semibold" style={tone(since)}>
+                            {signed(since)}
+                          </span>
+                        </div>
+                      ) : (
+                        <div className="mt-1 text-[10px] text-muted">
+                          {measure.length === 1
+                            ? "Click a second point"
+                            : "Click to measure from here"}
+                        </div>
+                      )}
                     </div>
                   );
                 }}
@@ -492,10 +544,16 @@ export default function PriceTool({
               <span className="text-muted">({measured.days} days)</span>
             </span>
             <span className="num text-ink">
-              {fmtP(measured.a.raw as number)} →{" "}
-              {fmtP(measured.b.raw as number)}
+              {fmtP(measured.a.p)} → {fmtP(measured.b.p)}
             </span>
-            <span className="num font-semibold" style={tone(measured.change)}>
+            <span className="num text-ink-2">
+              {measured.diff >= 0 ? "+" : "−"}
+              {fmtP(Math.abs(measured.diff))}
+            </span>
+            <span
+              className="num text-base font-semibold"
+              style={tone(measured.change)}
+            >
               {signed(measured.change)}
             </span>
             <button
@@ -510,7 +568,7 @@ export default function PriceTool({
           <span className="text-xs text-muted">
             {measure.length === 1
               ? `From ${dmy(measure[0])}: click a second point on the chart.`
-              : "Measure: click any two points on the chart to see the % change between them."}
+              : "Measure: click any two points on the chart to see the % price change between them."}
           </span>
         )}
       </div>
@@ -519,7 +577,7 @@ export default function PriceTool({
       {stats && (
         <div className="num grid grid-cols-2 gap-x-6 gap-y-1 border-t border-line pt-2 text-xs text-ink-2 sm:grid-cols-3 lg:grid-cols-6">
           <div>
-            Change{" "}
+            Change over period{" "}
             <span style={tone(stats.change)}>{signed(stats.change)}</span>
           </div>
           <div>
