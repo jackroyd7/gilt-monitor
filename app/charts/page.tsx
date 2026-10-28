@@ -5,7 +5,10 @@ export const metadata = { title: "Charts · Markets Monitor" };
 
 export default async function ChartsPage({ searchParams }: PageProps<"/charts">) {
   const raw = (await searchParams).tvwidgetsymbol;
-  const symbol = (Array.isArray(raw) ? raw[0] : raw)?.trim() || undefined;
+  let symbol = (Array.isArray(raw) ? raw[0] : raw)?.trim() || undefined;
+  // Some widgets (e.g. the FX cross-rate grid) pass a bare pair like "GBPEUR"; chart it on
+  // the FX_IDC feed, which carries every cross.
+  if (symbol && /^[A-Z]{6}$/i.test(symbol)) symbol = `FX_IDC:${symbol.toUpperCase()}`;
   return (
     <>
       <PageHeader title="Charts">

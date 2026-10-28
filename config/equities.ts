@@ -14,6 +14,7 @@ export const EQUITY_MARKETS: EquityMarket[] = [
   { id: "us-tech", label: "US · Nasdaq 100", heatmap: "NASDAQ100", movers: "NASDAQ" },
   { id: "de", label: "Germany · DAX", heatmap: "DAX", movers: "XETR" },
   { id: "fr", label: "France · CAC 40", heatmap: "CAC40", movers: "EURONEXT" },
+  { id: "jp", label: "Japan · Nikkei 225", heatmap: "NI225", movers: "TSE" },
 ];
 
 /** Heatmap colour: performance over this period ("change" is today). */
@@ -63,10 +64,11 @@ export const SECTOR_GROUPS = [
 
 // Volatility and style: a rising line means the first named leg is outperforming.
 export const STYLE_CHARTS = [
-  { symbol: "TVC:VIX", title: "VIX", note: "S&P 500 implied volatility" },
+  // TradingView's free charts don't carry the CBOE VIX or FTSE index feeds; CFD prices stand in.
+  { symbol: "CAPITALCOM:VIX", title: "VIX", note: "S&P 500 implied volatility (CFD price)" },
   { symbol: "AMEX:IWD/AMEX:IWF", title: "Value vs growth (US)", note: "Russell 1000 Value ÷ Growth" },
   { symbol: "AMEX:IWM/AMEX:SPY", title: "Small vs large caps (US)", note: "Russell 2000 ÷ S&P 500" },
   { symbol: "AMEX:RSP/AMEX:SPY", title: "Equal vs cap weight (US)", note: "Breadth: average stock ÷ index" },
-  { symbol: "FTSE:MCX/FOREXCOM:UKXGBP", title: "FTSE 250 vs FTSE 100", note: "Domestic UK ÷ global UK" },
+  { symbol: "FOREXCOM:UKXGBP/FOREXCOM:SPXUSD", title: "UK vs US", note: "FTSE 100 ÷ S&P 500, local currency" },
   { symbol: "FOREXCOM:EUSTX50/FOREXCOM:SPXUSD", title: "Europe vs US", note: "Euro Stoxx 50 ÷ S&P 500, local currency" },
 ];

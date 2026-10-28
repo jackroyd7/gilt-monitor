@@ -8,6 +8,7 @@ const NAMES: Record<string, string> = {
   gilt_history: "Gilt closes",
   boe_fx: "BoE FX rates",
   cftc: "CFTC positioning",
+  macro: "Economic data",
 };
 
 export default async function SourceStatus() {

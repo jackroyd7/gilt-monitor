@@ -12,10 +12,12 @@ import { closeDate, emptyHistory, historyJson, previousBusinessDays, pruneHistor
 import { fetchAllPrices } from "../lib/live-core";
 import type { CurveSet, DataStatus, GiltHistory, GiltSnapshot } from "../lib/types";
 import type { CotHistory, FxHistory } from "../lib/fx";
+import type { MacroData } from "../lib/macro";
 import { fetchBoe } from "./sources/boe";
 import { fetchBundesbank } from "./sources/bundesbank";
 import { fetchDmo } from "./sources/dmo";
 import { fetchBoeFx, fetchCot } from "./sources/fx";
+import { fetchMacro } from "./sources/macro";
 import { fetchUst } from "./sources/ust";
 
 const DATA = path.resolve(process.env.DATA_DIR ?? "data");
@@ -101,6 +103,15 @@ async function main() {
     await writeFile(path.join(DATA, "cot.json"), JSON.stringify(cot) + "\n");
     const latest = Object.values(cot.rows).flatMap((r) => Object.keys(r ?? {})).sort().pop();
     return { latestDate: latest, message: Object.keys(cot.rows).join(", ") };
+  });
+
+  await run("macro", async () => {
+    const file = path.join(DATA, "macro.json");
+    const { data, failures } = await fetchMacro(await readJson<MacroData>(file));
+    if (!Object.keys(data.series).length) throw new Error(failures.slice(0, 3).join("; ") || "no series");
+    await writeFile(file, JSON.stringify(data) + "\n");
+    const latest = Object.values(data.series).map((s) => s.points[s.points.length - 1]?.[0] ?? "").sort().pop();
+    return { latestDate: latest, message: `${Object.keys(data.series).length} series${failures.length ? `; ${failures.length} failed: ${failures.join(" | ")}` : ""}` };
   });
 
   let dmoSnapshot: GiltSnapshot | undefined;

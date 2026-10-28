@@ -498,3 +498,33 @@ test("matchEarnings keeps listed stocks only", () => {
   );
   assert.deepEqual(ev.map((e) => [e.name, e.region, e.hour]), [["TSMC", "Asia", "bmo"], ["Apple", "US", "amc"]]);
 });
+
+import { inferFreq, monthlyLast, onsDate, parseFredCsv, parseImf, parseOns, periodLabel, transform } from "./macro";
+
+test("ONS dates and JSON", () => {
+  assert.equal(onsDate("2024 SEP"), "2024-09-01");
+  assert.equal(onsDate("2024 Q3"), "2024-07-01");
+  assert.equal(onsDate("2024"), "2024-01-01");
+  const r = parseOns({ description: { title: "CPI ANNUAL RATE" }, months: [{ date: "2024 FEB", value: "3.4" }, { date: "2024 JAN", value: "4.0" }], quarters: [{ date: "2024 Q1", value: "3.5" }] });
+  assert.deepEqual(r, { title: "CPI ANNUAL RATE", freq: "M", points: [["2024-01-01", 4], ["2024-02-01", 3.4]] });
+  assert.equal(parseOns({ months: [], quarters: [{ date: "2024 Q1", value: "0.6" }] }).freq, "Q");
+});
+
+test("FRED CSV, frequency and transforms", () => {
+  const pts = parseFredCsv("observation_date,CPIAUCSL\n2023-01-01,100\n2023-02-01,.\n2024-01-01,103\n2024-02-01,104\n");
+  assert.deepEqual(pts, [["2023-01-01", 100], ["2024-01-01", 103], ["2024-02-01", 104]]);
+  const y = transform(pts, "yoy", "M");
+  assert.equal(y.length, 1);
+  assert.ok(Math.abs(y[0][1] - 3) < 1e-9);
+  const q: [string, number][] = [["2024-01-01", 100], ["2024-04-01", 101], ["2024-07-01", 101.5]];
+  assert.equal(inferFreq(q), "Q");
+  assert.ok(Math.abs(transform(q, "pop", "Q")[0][1] - 1) < 1e-9);
+  assert.deepEqual(transform([["2024-01-01", 150000], ["2024-02-01", 150200]], "diff", "M"), [["2024-02-01", 200]]);
+  assert.deepEqual(monthlyLast([["2024-01-02", 5], ["2024-01-31", 5.25], ["2024-02-01", 5.25]]), [["2024-01-01", 5.25], ["2024-02-01", 5.25]]);
+  assert.equal(periodLabel("2024-07-01", "Q"), "Q3 2024");
+  assert.equal(periodLabel("2024-09-01", "M"), "Sep 2024");
+});
+
+test("IMF DataMapper values", () => {
+  assert.deepEqual(parseImf({ values: { NGDP_RPCH: { GBR: { "2024": 1.1, "2025": null } } } }), { NGDP_RPCH: { GBR: { "2024": 1.1 } } });
+});

@@ -40,7 +40,7 @@ export const MARKET_GROUPS: { title: string; symbols: MarketSymbol[]; more: Mark
       { symbol: "FOREXCOM:ESXEUR", name: "IBEX 35" },
       { symbol: "FOREXCOM:HKXHKD", name: "Hang Seng" },
       { symbol: "FOREXCOM:AUXAUD", name: "ASX 200" },
-      { symbol: "TVC:VIX", name: "VIX (US volatility)" },
+      { symbol: "CAPITALCOM:VIX", name: "VIX (US volatility)" },
     ],
   },
   {

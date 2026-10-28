@@ -99,11 +99,9 @@ export default function EquitiesBoard() {
                 grouping: "sector",
                 blockSize: "market_cap_basic",
                 blockColor: period,
-                // TradingView's own top bar, with its index picker, as a fallback if a
-                // dataSource id below isn't recognised (it then shows the S&P 500).
-                hasTopBar: true,
-                isDataSetEnabled: true,
-                isSetDataSetEnabled: true,
+                // Our own market picker drives this; TradingView's long index list is hidden.
+                hasTopBar: false,
+                isDataSetEnabled: false,
                 isZoomEnabled: true,
                 hasSymbolTooltip: true,
                 isMonoSize: false,

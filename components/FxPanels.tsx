@@ -1,8 +1,26 @@
 "use client";
 
+import Link from "next/link";
 import { useMemo, useState } from "react";
-import { CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
-import { AXIS_TICK, fmtDate, Legend, RangePicker, RANGES, SeriesChart, toX } from "./charts";
+import {
+  CartesianGrid,
+  Line,
+  LineChart,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from "recharts";
+import {
+  AXIS_TICK,
+  fmtDate,
+  Legend,
+  RangePicker,
+  RANGES,
+  SeriesChart,
+  toX,
+} from "./charts";
+import Modal from "./Modal";
 import { Card } from "./Tiles";
 
 type Point = [string, number];
@@ -17,10 +35,20 @@ export interface FxTile {
   chg1m: number | null;
   ytd: number | null;
   spark: Point[];
+  /** Full BoE history, for the popup chart. */
+  history: Point[];
+  /** TradingView symbol for a live chart, if there is one. */
+  tvSymbol?: string;
 }
 
 const pct = (v: number | null) =>
-  v == null ? <span className="text-muted">–</span> : <span style={{ color: v > 0 ? "var(--down)" : v < 0 ? "var(--up)" : undefined }}>{`${v > 0 ? "+" : ""}${v.toFixed(2)}%`}</span>;
+  v == null ? (
+    <span className="text-muted">–</span>
+  ) : (
+    <span
+      style={{ color: v > 0 ? "var(--down)" : v < 0 ? "var(--up)" : undefined }}
+    >{`${v > 0 ? "+" : ""}${v.toFixed(2)}%`}</span>
+  );
 
 function Spark({ points }: { points: Point[] }) {
   if (points.length < 2) return null;
@@ -29,7 +57,12 @@ function Spark({ points }: { points: Point[] }) {
   const ys = points.map((p) => p[1]);
   const lo = Math.min(...ys);
   const span = Math.max(...ys) - lo || 1;
-  const d = points.map((p, i) => `${i ? "L" : "M"}${((i / (points.length - 1)) * w).toFixed(1)},${(h - 2 - ((p[1] - lo) / span) * (h - 4)).toFixed(1)}`).join("");
+  const d = points
+    .map(
+      (p, i) =>
+        `${i ? "L" : "M"}${((i / (points.length - 1)) * w).toFixed(1)},${(h - 2 - ((p[1] - lo) / span) * (h - 4)).toFixed(1)}`,
+    )
+    .join("");
   return (
     <svg width={w} height={h} viewBox={`0 0 ${w} ${h}`} aria-hidden>
       <path d={d} fill="none" stroke="var(--series-1)" strokeWidth="1.5" />
@@ -39,23 +72,69 @@ function Spark({ points }: { points: Point[] }) {
 
 /** Sterling levels (BoE 4pm rates) with 1w / 1m / YTD changes; a rise means sterling is stronger. */
 export function FxTiles({ tiles }: { tiles: FxTile[] }) {
+  const [open, setOpen] = useState<FxTile | null>(null);
   return (
-    <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
-      {tiles.map((t) => (
-        <div key={t.id} className="card p-3" title={t.date ? `BoE 4pm rate, ${t.date}` : "no data"}>
-          <div className="text-xs text-ink-2">{t.name}</div>
-          <div className="mt-1 text-2xl font-semibold text-ink">{t.value == null ? "–" : t.value.toFixed(t.digits)}</div>
-          <div className="num mt-0.5 flex flex-wrap gap-x-2.5 text-xs text-ink-2">
-            <span>1w {pct(t.chg1w)}</span>
-            <span>1m {pct(t.chg1m)}</span>
-            <span>YTD {pct(t.ytd)}</span>
-          </div>
-          <div className="mt-2">
-            <Spark points={t.spark} />
-          </div>
-        </div>
-      ))}
-    </div>
+    <>
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
+        {tiles.map((t) => (
+          <button
+            key={t.id}
+            onClick={() => setOpen(t)}
+            className="card p-3 text-left hover:border-[color:var(--accent)]"
+            title={
+              t.date
+                ? `BoE 4pm rate, ${t.date}. Click for the chart.`
+                : "no data"
+            }
+          >
+            <div className="text-xs text-ink-2">{t.name}</div>
+            <div className="mt-1 text-2xl font-semibold text-ink">
+              {t.value == null ? "–" : t.value.toFixed(t.digits)}
+            </div>
+            <div className="num mt-0.5 flex flex-wrap gap-x-2.5 text-xs text-ink-2">
+              <span>1w {pct(t.chg1w)}</span>
+              <span>1m {pct(t.chg1m)}</span>
+              <span>YTD {pct(t.ytd)}</span>
+            </div>
+            <div className="mt-2">
+              <Spark points={t.spark} />
+            </div>
+          </button>
+        ))}
+      </div>
+      {open && (
+        <Modal
+          title={open.name}
+          subtitle="Bank of England daily 4pm London rate"
+          onClose={() => setOpen(null)}
+        >
+          <SeriesChart
+            series={[
+              {
+                key: "v",
+                name: open.name,
+                color: "var(--series-1)",
+                points: open.history,
+              },
+            ]}
+            xKind="date"
+            unit="price"
+            height={360}
+            showLegend={false}
+          />
+          {open.tvSymbol && (
+            <p className="mt-3 text-sm">
+              <Link
+                href={`/charts?tvwidgetsymbol=${encodeURIComponent(open.tvSymbol)}`}
+                className="text-accent"
+              >
+                Live intraday chart on the Charts tab ↗
+              </Link>
+            </p>
+          )}
+        </Modal>
+      )}
+    </>
   );
 }
 
@@ -81,25 +160,43 @@ export function RatesVsFx({ pairs }: { pairs: RatesFxPair[] }) {
     const max = Math.max(...all.map((x) => toX(x[0])));
     const min = isFinite(days) ? max - days * 86400000 : -Infinity;
     const rows = new Map<number, { x: number; fx?: number; spread?: number }>();
-    for (const [d, v] of p.fx) if (toX(d) >= min) rows.set(toX(d), { ...rows.get(toX(d)), x: toX(d), fx: v });
-    for (const [d, v] of p.spread) if (toX(d) >= min) rows.set(toX(d), { ...rows.get(toX(d)), x: toX(d), spread: v });
+    for (const [d, v] of p.fx)
+      if (toX(d) >= min)
+        rows.set(toX(d), { ...rows.get(toX(d)), x: toX(d), fx: v });
+    for (const [d, v] of p.spread)
+      if (toX(d) >= min)
+        rows.set(toX(d), { ...rows.get(toX(d)), x: toX(d), spread: v });
     return [...rows.values()].sort((a, b) => a.x - b.x);
   }, [p, range]);
   if (!p) return null;
   const lastCorr = p.corr[p.corr.length - 1]?.[1];
 
   return (
-    <Card title="Rates vs FX" subtitle="Sterling against the 2-year government yield gap. A positive correlation means the pair moves with relative rates.">
+    <Card
+      title="Rates vs FX"
+      subtitle="Sterling against the 2-year government yield gap. A positive correlation means the pair moves with relative rates."
+    >
       <div className="mb-2 flex flex-wrap items-center gap-2">
-        <div className="flex rounded-md border border-line text-xs" data-export-ignore>
+        <div
+          className="flex rounded-md border border-line text-xs"
+          data-export-ignore
+        >
           {pairs.map((x) => (
-            <button key={x.id} onClick={() => setId(x.id)} aria-pressed={x.id === p.id} className={`px-2.5 py-1 ${x.id === p.id ? "bg-surface-2 font-medium text-ink" : "text-ink-2"}`}>
+            <button
+              key={x.id}
+              onClick={() => setId(x.id)}
+              aria-pressed={x.id === p.id}
+              className={`px-2.5 py-1 ${x.id === p.id ? "bg-surface-2 font-medium text-ink" : "text-ink-2"}`}
+            >
               {x.title}
             </button>
           ))}
         </div>
         <span className="text-xs text-ink-2">
-          3-month correlation of daily changes: <span className="num font-medium text-ink">{lastCorr == null ? "–" : lastCorr.toFixed(2)}</span>
+          3-month correlation of daily changes:{" "}
+          <span className="num font-medium text-ink">
+            {lastCorr == null ? "–" : lastCorr.toFixed(2)}
+          </span>
         </span>
         <div className="ml-auto" data-export-ignore>
           <RangePicker value={range} onChange={setRange} />
@@ -108,29 +205,97 @@ export function RatesVsFx({ pairs }: { pairs: RatesFxPair[] }) {
       <Legend
         series={[
           { key: "fx", name: `${p.fxName} (left)`, color: "var(--series-1)" },
-          { key: "spread", name: `${p.spreadName}, bp (right)`, color: "var(--series-2)" },
+          {
+            key: "spread",
+            name: `${p.spreadName}, bp (right)`,
+            color: "var(--series-2)",
+          },
         ]}
       />
       <div style={{ height: 300 }} className="mt-2 w-full">
         <ResponsiveContainer width="100%" height="100%">
-          <LineChart data={data} margin={{ top: 8, right: 4, bottom: 0, left: 0 }}>
+          <LineChart
+            data={data}
+            margin={{ top: 8, right: 4, bottom: 0, left: 0 }}
+          >
             <CartesianGrid vertical={false} />
-            <XAxis dataKey="x" type="number" domain={["dataMin", "dataMax"]} tick={AXIS_TICK} tickFormatter={fmtDate} minTickGap={24} />
-            <YAxis yAxisId="fx" tick={AXIS_TICK} width={52} domain={["auto", "auto"]} tickFormatter={(v: number) => v.toFixed(3)} />
-            <YAxis yAxisId="spread" orientation="right" tick={AXIS_TICK} width={44} domain={["auto", "auto"]} tickFormatter={(v: number) => v.toFixed(0)} />
+            <XAxis
+              dataKey="x"
+              type="number"
+              domain={["dataMin", "dataMax"]}
+              tick={AXIS_TICK}
+              tickFormatter={fmtDate}
+              minTickGap={24}
+            />
+            <YAxis
+              yAxisId="fx"
+              tick={AXIS_TICK}
+              width={52}
+              domain={["auto", "auto"]}
+              tickFormatter={(v: number) => v.toFixed(3)}
+            />
+            <YAxis
+              yAxisId="spread"
+              orientation="right"
+              tick={AXIS_TICK}
+              width={44}
+              domain={["auto", "auto"]}
+              tickFormatter={(v: number) => v.toFixed(0)}
+            />
             <Tooltip
               labelFormatter={(v) => fmtDate(Number(v))}
-              formatter={(v, k) => (k === "fx" ? [Number(v).toFixed(4), p.fxName] : [`${Number(v).toFixed(1)}bp`, p.spreadName])}
-              contentStyle={{ background: "var(--surface)", border: "1px solid var(--border)", fontSize: 12 }}
+              formatter={(v, k) =>
+                k === "fx"
+                  ? [Number(v).toFixed(4), p.fxName]
+                  : [`${Number(v).toFixed(1)}bp`, p.spreadName]
+              }
+              contentStyle={{
+                background: "var(--surface)",
+                border: "1px solid var(--border)",
+                fontSize: 12,
+              }}
             />
-            <Line yAxisId="fx" dataKey="fx" stroke="var(--series-1)" strokeWidth={2} dot={false} connectNulls isAnimationActive={false} />
-            <Line yAxisId="spread" dataKey="spread" stroke="var(--series-2)" strokeWidth={2} dot={false} connectNulls isAnimationActive={false} />
+            <Line
+              yAxisId="fx"
+              dataKey="fx"
+              stroke="var(--series-1)"
+              strokeWidth={2}
+              dot={false}
+              connectNulls
+              isAnimationActive={false}
+            />
+            <Line
+              yAxisId="spread"
+              dataKey="spread"
+              stroke="var(--series-2)"
+              strokeWidth={2}
+              dot={false}
+              connectNulls
+              isAnimationActive={false}
+            />
           </LineChart>
         </ResponsiveContainer>
       </div>
       <div className="mt-4">
-        <h3 className="mb-1 text-xs font-medium text-ink-2">Rolling 3-month correlation</h3>
-        <SeriesChart series={[{ key: "c", name: "Correlation", color: "var(--series-3)", points: p.corr }]} xKind="date" unit="price" height={160} range={range} showLegend={false} zeroLine />
+        <h3 className="mb-1 text-xs font-medium text-ink-2">
+          Rolling 3-month correlation
+        </h3>
+        <SeriesChart
+          series={[
+            {
+              key: "c",
+              name: "Correlation",
+              color: "var(--series-3)",
+              points: p.corr,
+            },
+          ]}
+          xKind="date"
+          unit="price"
+          height={160}
+          range={range}
+          showLegend={false}
+          zeroLine
+        />
       </div>
     </Card>
   );
@@ -149,7 +314,10 @@ export interface CotSeries {
   history: { date: string; assetManagers: number; leveraged: number }[];
 }
 
-const signed = (v: number | null) => (v == null ? "–" : `${v > 0 ? "+" : ""}${Math.round(v).toLocaleString("en-GB")}`);
+const signed = (v: number | null) =>
+  v == null
+    ? "–"
+    : `${v > 0 ? "+" : ""}${Math.round(v).toLocaleString("en-GB")}`;
 
 /** CFTC net futures positions by trader group. */
 export function Positioning({ rows }: { rows: CotSeries[] }) {
@@ -157,7 +325,10 @@ export function Positioning({ rows }: { rows: CotSeries[] }) {
   const r = rows.find((x) => x.id === id) ?? rows[0];
   if (!r) return <Card title="Positioning">No CFTC data yet.</Card>;
   return (
-    <Card title="Positioning (CFTC futures)" subtitle={`Net long contracts on CME currency futures, weekly (positions as of Tuesday, published Friday). Latest ${r.date ?? "–"}.`}>
+    <Card
+      title="Positioning (CFTC futures)"
+      subtitle={`Net long contracts on CME currency futures, weekly (positions as of Tuesday, published Friday). Latest ${r.date ?? "–"}.`}
+    >
       <div className="overflow-x-auto">
         <table className="w-full text-sm">
           <thead>
@@ -179,18 +350,32 @@ export function Positioning({ rows }: { rows: CotSeries[] }) {
                 className={`cursor-pointer border-t border-line ${x.id === r.id ? "bg-surface-2" : "hover:bg-surface-2/60"}`}
               >
                 <td className="py-1.5 text-ink">{x.name}</td>
-                <td className="py-1.5 text-right text-ink">{signed(x.assetManagers)}</td>
-                <td className="py-1.5 text-right text-ink-2">{signed(x.amChange)}</td>
-                <td className="py-1.5 text-right text-ink-2">{x.amPctOi == null ? "–" : `${x.amPctOi.toFixed(0)}%`}</td>
-                <td className="py-1.5 text-right text-ink">{signed(x.leveraged)}</td>
-                <td className="py-1.5 text-right text-ink-2">{signed(x.levChange)}</td>
-                <td className="py-1.5 text-right text-ink-2">{x.levPctOi == null ? "–" : `${x.levPctOi.toFixed(0)}%`}</td>
+                <td className="py-1.5 text-right text-ink">
+                  {signed(x.assetManagers)}
+                </td>
+                <td className="py-1.5 text-right text-ink-2">
+                  {signed(x.amChange)}
+                </td>
+                <td className="py-1.5 text-right text-ink-2">
+                  {x.amPctOi == null ? "–" : `${x.amPctOi.toFixed(0)}%`}
+                </td>
+                <td className="py-1.5 text-right text-ink">
+                  {signed(x.leveraged)}
+                </td>
+                <td className="py-1.5 text-right text-ink-2">
+                  {signed(x.levChange)}
+                </td>
+                <td className="py-1.5 text-right text-ink-2">
+                  {x.levPctOi == null ? "–" : `${x.levPctOi.toFixed(0)}%`}
+                </td>
               </tr>
             ))}
           </tbody>
         </table>
       </div>
-      <h3 className="mt-4 mb-1 text-xs font-medium text-ink-2">{r.name}: net contracts (click a row to switch)</h3>
+      <h3 className="mt-4 mb-1 text-xs font-medium text-ink-2">
+        {r.name}: net contracts (click a row to switch)
+      </h3>
       <SeriesChart
         xKind="date"
         unit="count"
@@ -198,8 +383,18 @@ export function Positioning({ rows }: { rows: CotSeries[] }) {
         defaultRange="2Y"
         zeroLine
         series={[
-          { key: "am", name: "Asset managers", color: "var(--series-1)", points: r.history.map((h) => [h.date, h.assetManagers]) },
-          { key: "lev", name: "Leveraged funds", color: "var(--series-2)", points: r.history.map((h) => [h.date, h.leveraged]) },
+          {
+            key: "am",
+            name: "Asset managers",
+            color: "var(--series-1)",
+            points: r.history.map((h) => [h.date, h.assetManagers]),
+          },
+          {
+            key: "lev",
+            name: "Leveraged funds",
+            color: "var(--series-2)",
+            points: r.history.map((h) => [h.date, h.leveraged]),
+          },
         ]}
       />
     </Card>

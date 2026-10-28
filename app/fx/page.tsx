@@ -14,6 +14,7 @@ import type { CurveSet } from "@/lib/types";
 
 export const metadata = { title: "FX · Markets Monitor" };
 
+const TV_SYMBOL: Partial<Record<string, string>> = { GBPUSD: "FX:GBPUSD", GBPEUR: "FX_IDC:GBPEUR", GBPJPY: "FX:GBPJPY", GBPCHF: "FX:GBPCHF" };
 const CURRENCIES = ["GBP", "USD", "EUR", "JPY", "CHF", "AUD", "CAD"];
 
 /** UK 2y minus another market's 2y, in bp, on each UK curve date (semi-annual basis). */
@@ -53,6 +54,8 @@ export default async function FxPage() {
     chg1m: pctChange(series[s.id], 31),
     ytd: pctChange(series[s.id], "ytd"),
     spark: series[s.id].slice(-63),
+    history: series[s.id],
+    tvSymbol: TV_SYMBOL[s.id],
   }));
 
   const uk = curves.uk_nominal;
