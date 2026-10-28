@@ -103,18 +103,18 @@ export default async function RatesPage() {
   });
 
   // Yields table: level with 1-day and 1-month changes (in % points, shown as bp).
-  const yieldTable = YIELD_ROWS.map(([id, name, code]) => {
-    const set = curves[id];
-    return {
-      name,
-      code,
-      date: latestDate(set),
-      cells: YIELD_TENORS.map((t) => {
-        const pts = tenorPoints(set, t, addDays(since, 2 * 365));
-        return { t, level: pts.at(-1)?.[1] ?? null, d1: changeSince(pts, 1), m1: changeSince(pts, 31) };
-      }),
-    };
-  });
+  const yieldRow = (name: string, code: string, ptsFor: (t: number) => Point[]) => {
+    const cells = YIELD_TENORS.map((t) => {
+      const pts = ptsFor(t);
+      return { t, level: pts.at(-1)?.[1] ?? null, d1: changeSince(pts, 1), m1: changeSince(pts, 31), date: pts.at(-1)?.[0] };
+    });
+    return { name, code, date: cells.map((c) => c.date ?? "").sort().pop() || undefined, cells };
+  };
+  const yieldTable = [
+    ...YIELD_ROWS.map(([id, name, code]) => yieldRow(name, code, (t) => tenorPoints(curves[id], t, addDays(since, 2 * 365)))),
+    // France: daily benchmark bond yields from the ECB (shown when the data job has them).
+    ...(rates?.france && Object.keys(rates.france).length ? [yieldRow("French OATs", "FR", (t) => (rates.france![String(t)] ?? []) as Point[])] : []),
+  ];
 
   // Inflation and real yields.
   const ukBei5 = tenorPoints(curves.uk_inflation, 5, since);
@@ -220,8 +220,9 @@ export default async function RatesPage() {
               </table>
             </div>
             <p className="mt-2 text-xs text-muted">
-              BoE fitted gilt zero curve, US Treasury par curve and Bundesbank zero curve, so levels can differ by a few bp from
-              benchmark bond yields. Dates are the latest close (month-day).
+              UK, US and Germany: BoE fitted gilt zero curve, US Treasury par curve and Bundesbank zero curve, so levels can differ
+              by a few bp from benchmark bond yields. France: benchmark OAT yields from the ECB. Dates are the latest close
+              (month-day).
             </p>
           </Card>
           <Card title="Curves today" subtitle="Zero curves (US: par), semi-annual %. UK BoE, Germany Bundesbank, US Treasury.">
