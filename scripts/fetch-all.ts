@@ -15,6 +15,7 @@ import type { CotHistory, FxHistory } from "../lib/fx";
 import type { MacroData } from "../lib/macro";
 import type { CommodityData } from "../lib/commodities";
 import type { PolicyData } from "../lib/policy";
+import type { RatesData } from "../lib/rates";
 import { fetchBoe } from "./sources/boe";
 import { fetchBundesbank } from "./sources/bundesbank";
 import { fetchDmo } from "./sources/dmo";
@@ -22,6 +23,7 @@ import { fetchBoeFx, fetchCot } from "./sources/fx";
 import { fetchMacro } from "./sources/macro";
 import { fetchCommodities } from "./sources/commodities";
 import { fetchPolicy } from "./sources/policy";
+import { fetchRates } from "./sources/rates";
 import { fetchUst } from "./sources/ust";
 
 const DATA = path.resolve(process.env.DATA_DIR ?? "data");
@@ -133,6 +135,15 @@ async function main() {
     await writeFile(file, JSON.stringify(data) + "\n");
     const upcoming = data.mpcDates.filter((d) => d >= today);
     return { latestDate: data.bankRate.at(-1)?.[0], message: [`${upcoming.length} upcoming MPC dates (next ${upcoming[0] ?? "unknown"})`, ...notes].join("; ") };
+  });
+
+  await run("rates", async () => {
+    const file = path.join(DATA, "rates.json");
+    const { data, failures } = await fetchRates(await readJson<RatesData>(file), addDays(today, -3 * 365));
+    if (!Object.keys(data.series).length) throw new Error(failures.join("; ") || "no data");
+    await writeFile(file, JSON.stringify(data) + "\n");
+    const latest = Object.values(data.series).map((p) => p?.at(-1)?.[0] ?? "").sort().pop();
+    return { latestDate: latest, message: failures.length ? `failed: ${failures.join(" | ")}` : `${Object.keys(data.series).length} series` };
   });
 
   let dmoSnapshot: GiltSnapshot | undefined;

@@ -8,6 +8,7 @@ import TradingViewWidget from "@/components/TradingViewWidget";
 import { headlineMetrics, tile } from "@/lib/analytics";
 import { londonClock } from "@/lib/briefing";
 import { latestBriefing } from "@/lib/briefing-store";
+import { prefsConfigured } from "@/lib/prefs-store";
 import { loadMarket, loadPolicy } from "@/lib/data";
 import { policyView } from "@/lib/policy-view";
 import { getNews } from "@/lib/news-fetch";
@@ -22,7 +23,7 @@ export default async function OverviewPage() {
     <>
       <PageHeader title="Overview" />
       <div className="space-y-4">
-        <BriefingCard briefing={briefing} today={londonClock().date} />
+        <BriefingCard briefing={briefing} today={londonClock().date} shared={prefsConfigured()} />
         <TickerTape />
         <div>
           <div className="mb-2 flex items-baseline justify-between">

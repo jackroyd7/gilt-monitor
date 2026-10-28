@@ -34,9 +34,12 @@ const newer = (a: Briefing | undefined, b: Briefing | undefined) =>
 export default function BriefingCard({
   briefing: fromServer,
   today,
+  shared,
 }: {
   briefing: Briefing | undefined;
   today: string;
+  /** Whether briefings are kept in shared storage (visible on every device). */
+  shared: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const [local, setLocal] = useState<Briefing | undefined>(undefined);
@@ -117,6 +120,11 @@ export default function BriefingCard({
       </button>
       {writing.error && (
         <span style={{ color: "var(--critical)" }}>{writing.error}</span>
+      )}
+      {!shared && (
+        <span className="text-xs text-muted">
+          Saved on this device only: connect Upstash Redis in Vercel → Storage to see briefings on all your devices.
+        </span>
       )}
     </div>
   );

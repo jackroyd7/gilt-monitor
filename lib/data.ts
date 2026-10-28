@@ -4,6 +4,7 @@ import path from "node:path";
 import type { Briefing } from "./briefing";
 import type { CommodityData } from "./commodities";
 import type { PolicyData } from "./policy";
+import type { RatesData } from "./rates";
 import type { CotHistory, FxHistory } from "./fx";
 import type { MacroData } from "./macro";
 import { withLatestCloses } from "./history";
@@ -44,6 +45,11 @@ export async function loadFx(): Promise<{ fx: FxHistory | undefined; cot: CotHis
 /** Commodity prices, US crude stocks and CFTC positioning. */
 export async function loadCommodities(): Promise<CommodityData | undefined> {
   return readJson<CommodityData>(path.join(dataDir(), "commodities.json"));
+}
+
+/** US breakevens, real yields and overnight / policy rates. */
+export async function loadRates(): Promise<RatesData | undefined> {
+  return readJson<RatesData>(path.join(dataDir(), "rates.json"));
 }
 
 /** Bank Rate, SONIA and MPC dates. */

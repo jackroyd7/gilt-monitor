@@ -18,6 +18,7 @@ export const GILT_PAGES = [
 ];
 
 const MARKET_TABS = [
+  { href: "/rates", label: "Rates" },
   { href: "/equities", label: "Equities" },
   { href: "/fx", label: "FX" },
   { href: "/commodities", label: "Commodities" },
