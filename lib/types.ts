@@ -7,13 +7,15 @@ export type CurveId =
   | "uk_inflation"
   | "uk_ois"
   | "de_bund"
-  | "us_ust";
+  | "us_ust"
+  | "uk_ois_fwd"; // SONIA OIS instantaneous forwards, monthly to 5 years (short end)
 
 /** How a curve's rates are quoted. Different bases differ by a few bp at the same tenor. */
 export type RateBasis =
   | "zero_cc" // zero-coupon, continuously compounded (BoE fitted curves)
   | "zero_annual" // zero-coupon, annually compounded (Bundesbank Svensson)
-  | "par_semiannual"; // par yield, semi-annual bond-equivalent (US Treasury)
+  | "par_semiannual" // par yield, semi-annual bond-equivalent (US Treasury)
+  | "fwd_inst"; // instantaneous forward rate (≈ the overnight rate expected at that date)
 
 /** A daily history of one curve: rows[date][i] is the rate at tenors[i] years. */
 export interface CurveSet {

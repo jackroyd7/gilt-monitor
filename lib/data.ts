@@ -3,13 +3,14 @@ import { readFile } from "node:fs/promises";
 import path from "node:path";
 import type { Briefing } from "./briefing";
 import type { CommodityData } from "./commodities";
+import type { PolicyData } from "./policy";
 import type { CotHistory, FxHistory } from "./fx";
 import type { MacroData } from "./macro";
 import { withLatestCloses } from "./history";
 import { getLive, withLive, type LiveSnapshot } from "./live";
 import type { CurveId, CurveSet, DataStatus, GiltHistory, GiltSnapshot } from "./types";
 
-const CURVE_IDS: CurveId[] = ["uk_nominal", "uk_real", "uk_inflation", "uk_ois", "de_bund", "us_ust"];
+const CURVE_IDS: CurveId[] = ["uk_nominal", "uk_real", "uk_inflation", "uk_ois", "de_bund", "us_ust", "uk_ois_fwd"];
 
 export type Curves = Partial<Record<CurveId, CurveSet>>;
 
@@ -43,6 +44,11 @@ export async function loadFx(): Promise<{ fx: FxHistory | undefined; cot: CotHis
 /** Commodity prices, US crude stocks and CFTC positioning. */
 export async function loadCommodities(): Promise<CommodityData | undefined> {
   return readJson<CommodityData>(path.join(dataDir(), "commodities.json"));
+}
+
+/** Bank Rate, SONIA and MPC dates. */
+export async function loadPolicy(): Promise<PolicyData | undefined> {
+  return readJson<PolicyData>(path.join(dataDir(), "boe-policy.json"));
 }
 
 /** Today's (or the latest) morning briefing. */

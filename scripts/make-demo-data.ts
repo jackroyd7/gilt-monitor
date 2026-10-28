@@ -196,6 +196,19 @@ async function main() {
   await mkdir(path.join(DIR, "curves"), { recursive: true });
   await writeFile(path.join(DIR, "macro.json"), JSON.stringify(demoMacro()));
   {
+    // OIS short-end forwards: a gentle easing path, and Bank Rate / SONIA / MPC dates.
+    const tenors = Array.from({ length: 60 }, (_, i) => +((i + 1) / 12).toFixed(4));
+    const rows: Record<string, number[]> = {};
+    dates.slice(-120).forEach((d, i) => {
+      const lvl = 3.72 + 0.002 * (i - 60);
+      rows[d] = tenors.map((t) => +(lvl - 0.6 * (1 - Math.exp(-t / 0.8)) + 0.15 * t * 0.2).toFixed(4));
+    });
+    await writeFile(path.join(DIR, "curves", "uk_ois_fwd.json"), JSON.stringify({ id: "uk_ois_fwd", label: "DEMO", source: "DEMO", basis: "fwd_inst", tenors, rows }));
+    const y = Number(end.slice(0, 4));
+    const mpc = [`${y}-11-05`, `${y}-12-17`, `${y + 1}-02-04`, `${y + 1}-03-18`, `${y + 1}-04-29`, `${y + 1}-06-17`, `${y + 1}-07-29`, `${y + 1}-09-16`, `${y + 1}-11-04`, `${y + 1}-12-16`];
+    await writeFile(path.join(DIR, "boe-policy.json"), JSON.stringify({ updatedAt: new Date().toISOString(), mpcDates: mpc, bankRate: dates.map((d) => [d, 3.75]), sonia: dates.map((d) => [d, 3.72]) }));
+  }
+  {
     const series = (start: number, vol: number, every = 1) => {
       let v = start;
       return dates.filter((_, i) => i % every === 0).map((d) => [d, +(v *= Math.exp(vol * gauss())).toFixed(2)] as [string, number]);
@@ -236,7 +249,7 @@ async function main() {
   const status: DataStatus = {
     updatedAt: now,
     demo: true,
-    sources: Object.fromEntries(["boe", "bundesbank", "ust", "dmo", "boe_fx", "cftc", "macro", "commodities"].map((k) => [k, { ok: true, checkedAt: now, latestDate: end, message: "demo" }])),
+    sources: Object.fromEntries(["boe", "bundesbank", "ust", "dmo", "boe_fx", "cftc", "macro", "commodities", "boe_policy"].map((k) => [k, { ok: true, checkedAt: now, latestDate: end, message: "demo" }])),
   };
   await writeFile(path.join(DIR, "status.json"), JSON.stringify(status, null, 2));
   console.log(`Wrote synthetic data for ${dates.length} days and ${gilts.length} gilts to ${DIR}`);

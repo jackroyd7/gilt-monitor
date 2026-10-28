@@ -20,11 +20,25 @@ const META: Record<BoeCurveKind, Pick<CurveSet, "id" | "label">> = {
   ois: { id: "uk_ois", label: "SONIA OIS zero" },
 };
 
-function collect(zipBytes: Uint8Array, into: Map<BoeCurveKind, CurveSet>, sinceDate?: string) {
+// The OIS workbook's monthly short-end forwards, for the Bank Rate path.
+const OIS_FWD: Pick<CurveSet, "id" | "label"> = { id: "uk_ois_fwd", label: "SONIA OIS instantaneous forwards (short end)" };
+
+function collect(zipBytes: Uint8Array, into: Map<BoeCurveKind | "ois_fwd", CurveSet>, sinceDate?: string) {
   const files = unzipSync(zipBytes);
   for (const [name, bytes] of Object.entries(files)) {
     const kind = boeKindFromFilename(name.split("/").pop() ?? name);
     if (!kind) continue;
+    if (kind === "ois") {
+      const fwd = parseBoeWorkbook(bytes, "fwdShort");
+      if (fwd) {
+        const rows = Object.fromEntries(Object.entries(fwd.rows).filter(([d]) => !sinceDate || d >= sinceDate));
+        if (Object.keys(rows).length) {
+          const fresh: CurveSet = { ...OIS_FWD, source: "Bank of England yield curves", basis: "fwd_inst", tenors: fwd.tenors, rows };
+          const prev = into.get("ois_fwd");
+          into.set("ois_fwd", prev ? mergeSameSource(prev, fresh) : fresh);
+        }
+      } else console.warn(`  BoE: no short-end forward sheet in ${name}`);
+    }
     const parsed = parseBoeWorkbook(bytes);
     if (!parsed) {
       console.warn(`  BoE: no spot curve sheet in ${name}`);
@@ -59,7 +73,7 @@ function mergeSameSource(a: CurveSet, b: CurveSet): CurveSet {
 }
 
 export async function fetchBoe(opts: { backfillSince?: string } = {}): Promise<CurveSet[]> {
-  const out = new Map<BoeCurveKind, CurveSet>();
+  const out = new Map<BoeCurveKind | "ois_fwd", CurveSet>();
   if (opts.backfillSince) {
     for (const url of ARCHIVES) {
       try {

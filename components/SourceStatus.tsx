@@ -10,6 +10,7 @@ const NAMES: Record<string, string> = {
   cftc: "CFTC positioning",
   macro: "Economic data",
   commodities: "Commodity prices & positioning",
+  boe_policy: "Bank Rate & MPC dates",
 };
 
 export default async function SourceStatus() {

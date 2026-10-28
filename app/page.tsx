@@ -8,12 +8,14 @@ import TradingViewWidget from "@/components/TradingViewWidget";
 import { headlineMetrics, tile } from "@/lib/analytics";
 import { londonClock } from "@/lib/briefing";
 import { latestBriefing } from "@/lib/briefing-store";
-import { loadMarket } from "@/lib/data";
+import { loadMarket, loadPolicy } from "@/lib/data";
+import { policyView } from "@/lib/policy-view";
 import { getNews } from "@/lib/news-fetch";
 
 export default async function OverviewPage() {
   await connection();
-  const [briefing, { curves }, news] = await Promise.all([latestBriefing(), loadMarket(), getNews()]);
+  const [briefing, { curves }, news, policy] = await Promise.all([latestBriefing(), loadMarket(), getNews(), loadPolicy()]);
+  const boe = policyView(curves.uk_ois_fwd, policy);
   const tiles = headlineMetrics(curves).slice(0, 5).map(tile);
   const top = [...news.items].sort((a, b) => (b.score ?? 0) - (a.score ?? 0)).slice(0, 8);
   return (
@@ -30,6 +32,13 @@ export default async function OverviewPage() {
             </Link>
           </div>
           <TileGrid tiles={tiles} />
+          {boe?.next && (
+            <Link href="/gilts/boe" className="mt-2 block text-sm text-ink-2 hover:text-accent">
+              <span className="font-medium text-ink">Bank Rate {boe.bank.toFixed(2)}%.</span> Next MPC {boe.next.label}:{" "}
+              {Math.abs(boe.next.change) < 2 ? "no change priced" : `${boe.next.change > 0 ? "+" : "−"}${Math.abs(boe.next.change).toFixed(0)}bp priced`}
+              {boe.end && <> · {boe.end.rate.toFixed(2)}% priced by {boe.end.label}</>} →
+            </Link>
+          )}
         </div>
         <div className="grid gap-4 lg:grid-cols-2">
           <Card title="Economic calendar" subtitle="Medium and high-importance releases: UK, US, euro area, Germany, France, Japan, China. Times in UK time." exportable={false}>

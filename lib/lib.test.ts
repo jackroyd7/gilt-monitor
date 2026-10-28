@@ -572,3 +572,22 @@ test("RV maths: forwards, carry/roll, z-scores, combos, DV01", () => {
   assert.deepEqual(combo([{ series: [["d1", 4], ["d2", 4.1]], weight: -1 }, { series: [["d1", 4.5]], weight: 1 }]), [["d1", 50]]);
   assert.equal(dv01(1_000_000, 100, 7), 700);
 });
+
+import { parseMpcDates } from "./parsers";
+import { meetingPath } from "./policy";
+
+test("parseMpcDates reads dates under year headings and in full", () => {
+  const html = "<h2>2026</h2><ul><li>Thursday 5 November</li><li>Thursday 17 December</li></ul><h2>2027</h2><p>Thursday 4 February</p><p>Thursday 18 March 2027</p>";
+  assert.deepEqual(parseMpcDates(html), ["2026-11-05", "2026-12-17", "2027-02-04", "2027-03-18"]);
+});
+
+test("meetingPath turns forwards into implied Bank Rate per meeting", () => {
+  // Forwards step down 25bp after ~2 months: a cut priced at the second meeting.
+  const tenors = Array.from({ length: 24 }, (_, i) => (i + 1) / 12);
+  const fwd: CurveSet = { id: "uk_ois_fwd", label: "", source: "", basis: "fwd_inst", tenors, rows: { "2026-10-28": tenors.map((t) => (t < 0.15 ? 3.72 : 3.47)) } };
+  const p = meetingPath(fwd, "2026-10-28", ["2026-09-18", "2026-11-05", "2026-12-17", "2027-02-04"], 3.75, 3.72);
+  assert.equal(p[0].date, "2026-11-05");
+  // Forwards between the monthly points are interpolated, so the step is spread a little.
+  assert.ok(p[1].cumulative < -18 && p[1].cumulative > -26, `got ${p[1].cumulative}`);
+  assert.ok(p[0].cumulative > p[1].cumulative && Math.abs(p[2].cumulative + 25) < 1);
+});

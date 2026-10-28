@@ -11,6 +11,7 @@ export const GILT_PAGES = [
   { href: "/gilts/bonds", label: "Gilts" },
   { href: "/gilts/curves", label: "Curves" },
   { href: "/gilts/ois", label: "vs OIS" },
+  { href: "/gilts/boe", label: "BoE rate path" },
   { href: "/gilts/cross-market", label: "Cross-market" },
   { href: "/gilts/rv", label: "Relative value" },
   { href: "/gilts/portfolio", label: "Portfolio" },

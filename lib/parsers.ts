@@ -98,11 +98,14 @@ export function boeKindFromFilename(name: string): BoeCurveKind | null {
  * Sheet names look like "4. spot curve"; the short-end variant ("3. spot, short end")
  * uses monthly tenors and is skipped.
  */
-export function parseBoeWorkbook(buf: Uint8Array): { tenors: number[]; rows: CurveSet["rows"] } | null {
+export function parseBoeWorkbook(buf: Uint8Array, sheet: "spot" | "fwdShort" = "spot"): { tenors: number[]; rows: CurveSet["rows"] } | null {
   const wb = XLSX.read(buf, { type: "array", cellDates: true });
+  // "fwdShort" is the monthly short-end forward sheet ("1. fwds, short end"); its tenors are
+  // months and are returned in years.
   const sheetName =
-    wb.SheetNames.find((s) => /spot curve/i.test(s) && !/short/i.test(s)) ??
-    wb.SheetNames.find((s) => /spot/i.test(s) && !/short/i.test(s));
+    sheet === "fwdShort"
+      ? wb.SheetNames.find((s) => /fwd|forward/i.test(s) && /short/i.test(s))
+      : (wb.SheetNames.find((s) => /spot curve/i.test(s) && !/short/i.test(s)) ?? wb.SheetNames.find((s) => /spot/i.test(s) && !/short/i.test(s)));
   if (!sheetName) return null;
   const grid = XLSX.utils.sheet_to_json<unknown[]>(wb.Sheets[sheetName], { header: 1, raw: true, defval: null });
 
@@ -129,7 +132,40 @@ export function parseBoeWorkbook(buf: Uint8Array): { tenors: number[]; rows: Cur
     const vals = cols.map(({ col }) => num(line[col]));
     if (vals.some((v) => v != null)) rows[date] = vals;
   }
-  return { tenors: cols.map((c) => c.t), rows };
+  return { tenors: cols.map((c) => (sheet === "fwdShort" ? +(c.t / 12).toFixed(4) : c.t)), rows };
+}
+
+// ---------------------------------------------------------------- MPC dates
+
+const MONTH_NAMES = ["january", "february", "march", "april", "may", "june", "july", "august", "september", "october", "november", "december"];
+
+/**
+ * MPC announcement dates from the BoE "upcoming MPC dates" page: dates like "Thursday 5
+ * February" listed under year headings, or written in full with the year.
+ */
+export function parseMpcDates(html: string): string[] {
+  const text = html
+    .replace(/<script[\s\S]*?<\/script>|<style[\s\S]*?<\/style>/gi, " ")
+    // End every block element with a separator so a year heading never reads as the year
+    // of the date before it.
+    .replace(/<\/(?:li|p|h\d|td|th|tr|div|dd|dt)>|<br\s*\/?>/gi, " ; ")
+    .replace(/<[^>]+>/g, " ")
+    .replace(/&nbsp;|&#160;/g, " ")
+    .replace(/\s+/g, " ");
+  const out = new Set<string>();
+  let year: number | null = null;
+  const re = /\b(20\d{2})\b|\b(?:Monday|Tuesday|Wednesday|Thursday|Friday)\s+(\d{1,2})(?:st|nd|rd|th)?\s+(January|February|March|April|May|June|July|August|September|October|November|December)(?:\s+(20\d{2}))?/gi;
+  for (const m of text.matchAll(re)) {
+    if (m[1]) {
+      year = Number(m[1]);
+      continue;
+    }
+    const y = m[4] ? Number(m[4]) : year;
+    if (!y) continue;
+    const mo = MONTH_NAMES.indexOf(m[3].toLowerCase()) + 1;
+    out.add(`${y}-${String(mo).padStart(2, "0")}-${m[2].padStart(2, "0")}`);
+  }
+  return [...out].sort();
 }
 
 // ---------------------------------------------------------------- US Treasury

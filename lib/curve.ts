@@ -92,6 +92,7 @@ export function toSemiannual(rate: number, basis: RateBasis): number {
     case "zero_annual":
       return 200 * (Math.sqrt(1 + r) - 1);
     case "par_semiannual":
+    case "fwd_inst": // a forward overnight rate; compounding conversion doesn't apply
       return rate;
   }
 }
