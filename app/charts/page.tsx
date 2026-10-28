@@ -1,14 +1,13 @@
 import ChartWorkbench from "@/components/ChartWorkbench";
 import { PageHeader } from "@/components/Tiles";
+import { normaliseTvSymbol } from "@/lib/tv-symbol";
 
 export const metadata = { title: "Charts · Markets Monitor" };
 
 export default async function ChartsPage({ searchParams }: PageProps<"/charts">) {
-  const raw = (await searchParams).tvwidgetsymbol;
-  let symbol = (Array.isArray(raw) ? raw[0] : raw)?.trim() || undefined;
-  // Some widgets (e.g. the FX cross-rate grid) pass a bare pair like "GBPEUR"; chart it on
-  // the FX_IDC feed, which carries every cross.
-  if (symbol && /^[A-Z]{6}$/i.test(symbol)) symbol = `FX_IDC:${symbol.toUpperCase()}`;
+  const params = await searchParams;
+  const first = (v: string | string[] | undefined) => (Array.isArray(v) ? v[0] : v);
+  const symbol = normaliseTvSymbol(first(params.tvwidgetsymbol), first(params.exchange));
   return (
     <>
       <PageHeader title="Charts">

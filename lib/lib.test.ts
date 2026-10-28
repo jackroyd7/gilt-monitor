@@ -535,3 +535,14 @@ test("ECB CSV", () => {
   const csv = "KEY,FREQ,REF_AREA,TIME_PERIOD,OBS_VALUE,OBS_STATUS\nICP.M.U2.N.XEF000.4.ANR,M,U2,2026-08,2.3,A\nICP.M.U2.N.XEF000.4.ANR,M,U2,2026-09,2.4,A\n";
   assert.deepEqual(parseEcbCsv(csv), [["2026-08-01", 2.3], ["2026-09-01", 2.4]]);
 });
+
+import { normaliseTvSymbol } from "./tv-symbol";
+
+test("normaliseTvSymbol handles each widget link shape", () => {
+  assert.equal(normaliseTvSymbol("FX:GBPUSD"), "FX:GBPUSD");
+  assert.equal(normaliseTvSymbol("USDCHF?exchange=FX_IDC"), "FX_IDC:USDCHF");
+  assert.equal(normaliseTvSymbol("USDCHF", "FX_IDC"), "FX_IDC:USDCHF");
+  assert.equal(normaliseTvSymbol("gbpeur"), "FX_IDC:GBPEUR");
+  assert.equal(normaliseTvSymbol("NASDAQ:AAPL"), "NASDAQ:AAPL");
+  assert.equal(normaliseTvSymbol(""), undefined);
+});

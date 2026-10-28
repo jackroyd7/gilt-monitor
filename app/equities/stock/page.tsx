@@ -5,6 +5,7 @@ import StockView from "@/components/StockView";
 import { PageHeader } from "@/components/Tiles";
 import { STOCKS } from "@/config/stock-catalogue";
 import { getQueryNews } from "@/lib/news-fetch";
+import { normaliseTvSymbol } from "@/lib/tv-symbol";
 
 export const metadata = { title: "Stock · Markets Monitor" };
 
@@ -13,8 +14,9 @@ const VALID = /^[A-Z0-9_]+:[A-Z0-9._!-]+$/i;
 
 export default async function StockPage({ searchParams }: PageProps<"/equities/stock">) {
   await connection();
-  const raw = (await searchParams).tvwidgetsymbol;
-  const symbol = (Array.isArray(raw) ? raw[0] : raw)?.trim().toUpperCase() ?? "";
+  const params = await searchParams;
+  const first = (v: string | string[] | undefined) => (Array.isArray(v) ? v[0] : v);
+  const symbol = normaliseTvSymbol(first(params.tvwidgetsymbol), first(params.exchange)) ?? "";
   if (!VALID.test(symbol)) {
     return (
       <PageHeader title="Stock">
