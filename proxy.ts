@@ -5,13 +5,14 @@ import { AUTH_COOKIE, safeEqual, sessionToken } from "@/lib/auth";
 // /login and get a long-lived session cookie (home-screen web apps on iPhone don't handle the
 // browser's Basic-auth pop-up well). Basic auth is still accepted, e.g. for scripts.
 // The briefing cron route checks CRON_SECRET itself and writes at most one briefing a day.
-const PUBLIC = ["/login", "/manifest.webmanifest", "/icon", "/apple-icon", "/pwa-icon", "/api/briefing/cron"];
+const PUBLIC = ["/login", "/manifest.webmanifest", "/icon", "/apple-icon", "/icons", "/api/briefing/cron"];
 
 export async function proxy(request: NextRequest) {
   const password = process.env.DASHBOARD_PASSWORD;
   if (!password) return NextResponse.next();
   const { pathname, search } = request.nextUrl;
-  if (PUBLIC.some((p) => pathname === p || pathname.startsWith(`${p}/`) || pathname.startsWith(`${p}?`))) return NextResponse.next();
+  // Icons are public (iOS fetches them without the session cookie): /icon.png, /apple-icon.png, /icons/*.
+  if (PUBLIC.some((p) => pathname === p || pathname.startsWith(`${p}/`) || pathname.startsWith(`${p}.`))) return NextResponse.next();
 
   const cookie = request.cookies.get(AUTH_COOKIE)?.value;
   if (cookie && safeEqual(cookie, await sessionToken(password))) return NextResponse.next();
