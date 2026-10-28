@@ -20,8 +20,11 @@ import type { StockQuotes } from "./stocks";
 // "Ask about this page": a short AI answer grounded in our data for the tab you're on,
 // with a few web searches for the news behind a move.
 
+/** Longest answer, in words. Set here on the server and written into the system prompt. */
+export const ANSWER_WORDS = 300;
+
 const SYSTEM = `You answer quick questions from a UK-based professional investor using a markets dashboard covering gilts and UK rates, global government bonds, equities, FX, commodities and the economy.
-Answer in at most 100 words, plainly, in British English. Lead with the direct answer. Use the dashboard data supplied (it is the latest end-of-day data unless stated) and cite numbers from it with units (bp, %). Use web search only when the question needs news or explanation beyond the data, and only a few searches. If the data and searches don't support an answer, say so briefly rather than guess. No headings, no bullet lists unless essential, no preamble.`;
+Answer in at most ${ANSWER_WORDS} words (shorter is fine when the question is simple), plainly, in British English. Lead with the direct answer. Use the dashboard data supplied (it is the latest end-of-day data unless stated) and cite numbers from it with units (bp, %). Use web search only when the question needs news or explanation beyond the data, and only a few searches. If the data and searches don't support an answer, say so briefly rather than guess. No headings, no bullet lists unless essential, no preamble.`;
 
 const dataDir = () => path.join(/*turbopackIgnore: true*/ process.cwd(), process.env.DATA_DIR ?? "data");
 const readJson = async <T>(f: string) => {
@@ -114,11 +117,11 @@ export interface Answer {
   sources: { title: string; url: string }[];
 }
 
-/** Answers one question about a page in at most ~100 words. Cached for 30 minutes. */
+/** Answers one question about a page in at most ANSWER_WORDS words. Cached for 30 minutes. */
 export async function ask(page: string, question: string): Promise<Answer> {
   const apiKey = anthropicKey();
   if (!apiKey) throw new Error("ANTHROPIC_API_KEY is not set in Vercel.");
-  const key = `${page}|${question.trim().toLowerCase()}`;
+  const key = `${ANSWER_WORDS}|${page}|${question.trim().toLowerCase()}`;
   const hit = cache.get(key);
   if (hit && Date.now() - hit.at < 30 * 60_000) return hit.answer;
 
@@ -151,7 +154,8 @@ export async function ask(page: string, question: string): Promise<Answer> {
   const finalBlocks = blocks.filter((b) => response!.content.indexOf(b) > lastTool);
   let text = (finalBlocks.length ? finalBlocks : blocks).map((b) => b.text).join("").trim();
   const words = text.split(/\s+/);
-  if (words.length > 110) text = `${words.slice(0, 100).join(" ")}…`;
+  // Backstop if the model runs over the limit in the prompt.
+  if (words.length > ANSWER_WORDS * 1.07) text = `${words.slice(0, ANSWER_WORDS).join(" ")}…`;
   if (!text) throw new Error("Empty answer; try rephrasing.");
   const sources = new Map<string, string>();
   for (const b of blocks) for (const c of b.citations ?? []) if (c.type === "web_search_result_location" && c.url) sources.set(c.url, c.title ?? c.url);
