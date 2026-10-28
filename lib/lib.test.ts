@@ -546,3 +546,10 @@ test("normaliseTvSymbol handles each widget link shape", () => {
   assert.equal(normaliseTvSymbol("NASDAQ:AAPL"), "NASDAQ:AAPL");
   assert.equal(normaliseTvSymbol(""), undefined);
 });
+
+import { parseEiaSheet } from "./commodities";
+
+test("parseEiaSheet reads dated rows and skips headers", () => {
+  const rows = [["Sourcekey", "WCESTUS1"], ["Date", "Weekly U.S. Ending Stocks"], [new Date(Date.UTC(2026, 9, 16)), 421003], [46323, 419500]];
+  assert.deepEqual(parseEiaSheet(rows), [["2026-10-16", 421003], ["2026-10-28", 419500]]);
+});

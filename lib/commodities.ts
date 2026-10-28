@@ -4,10 +4,11 @@
 import type { CotFields, CotRow } from "./fx";
 
 export const COMMODITY_SERIES = [
-  { id: "BRENT", fred: "DCOILBRENTEU", name: "Brent crude", unit: "$/bbl", digits: 2, tv: "TVC:UKOIL" },
-  { id: "WTI", fred: "DCOILWTICO", name: "WTI crude", unit: "$/bbl", digits: 2, tv: "TVC:USOIL" },
-  { id: "HH", fred: "DHHNGSP", name: "US natural gas (Henry Hub)", unit: "$/MMBtu", digits: 2, tv: "CAPITALCOM:NATURALGAS" },
-  { id: "CRUDE_STOCKS", fred: "WCESTUS1", name: "US crude stocks (ex SPR)", unit: "m bbl", digits: 1, tv: undefined },
+  { id: "BRENT", fred: "DCOILBRENTEU", eia: undefined, name: "Brent crude", unit: "$/bbl", digits: 2, tv: "TVC:UKOIL" },
+  { id: "WTI", fred: "DCOILWTICO", eia: undefined, name: "WTI crude", unit: "$/bbl", digits: 2, tv: "TVC:USOIL" },
+  { id: "HH", fred: "DHHNGSP", eia: undefined, name: "US natural gas (Henry Hub)", unit: "$/MMBtu", digits: 2, tv: "CAPITALCOM:NATURALGAS" },
+  // Not on FRED: read from EIA's spreadsheet download (see eiaXls in scripts/sources/commodities.ts).
+  { id: "CRUDE_STOCKS", fred: undefined, eia: "WCESTUS1", name: "US crude stocks (ex SPR)", unit: "m bbl", digits: 1, tv: undefined },
 ] as const;
 export type CommodityId = (typeof COMMODITY_SERIES)[number]["id"];
 
@@ -30,6 +31,19 @@ export const DISAGG_FIELDS: CotFields = {
   bLong: /^prod_merc_positions_long(_all)?$/,
   bShort: /^prod_merc_positions_short(_all)?$/,
 };
+
+/** EIA history workbook (sheet "Data 1": a date column then the series) → [date, value][]. */
+export function parseEiaSheet(rows: unknown[][]): [string, number][] {
+  const out: [string, number][] = [];
+  for (const r of rows) {
+    const [d, v] = r;
+    let iso: string | null = null;
+    if (d instanceof Date && !isNaN(d.getTime())) iso = d.toISOString().slice(0, 10);
+    else if (typeof d === "number" && d > 20000 && d < 80000) iso = new Date(Date.UTC(1899, 11, 30) + d * 86_400_000).toISOString().slice(0, 10);
+    if (iso && typeof v === "number" && Number.isFinite(v)) out.push([iso, v]);
+  }
+  return out.sort((a, b) => a[0].localeCompare(b[0]));
+}
 
 export interface CommodityData {
   updatedAt: string;

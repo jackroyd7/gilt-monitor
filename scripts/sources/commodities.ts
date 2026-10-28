@@ -1,7 +1,16 @@
-import { COMMODITY_COT, COMMODITY_SERIES, DISAGG_FIELDS, type CommodityData } from "../../lib/commodities";
+import * as XLSX from "xlsx";
+import { COMMODITY_COT, COMMODITY_SERIES, DISAGG_FIELDS, parseEiaSheet, type CommodityData } from "../../lib/commodities";
 import { parseCotWith } from "../../lib/fx";
 import { parseFredCsv } from "../../lib/macro";
-import { getText } from "./http";
+import { getBytes, getText } from "./http";
+
+/** EIA weekly/daily history workbook, keyless: https://www.eia.gov/dnav/pet/hist_xls/<ID>w.xls */
+async function eiaXls(id: string): Promise<[string, number][]> {
+  const wb = XLSX.read(await getBytes(`https://www.eia.gov/dnav/pet/hist_xls/${id}w.xls`), { cellDates: true });
+  const sheet = wb.Sheets["Data 1"] ?? wb.Sheets[wb.SheetNames[1]];
+  if (!sheet) throw new Error("no data sheet in EIA workbook");
+  return parseEiaSheet(XLSX.utils.sheet_to_json<unknown[]>(sheet, { header: 1 }));
+}
 
 /** FRED prices (5 years) and CFTC disaggregated positions (3 years). Keeps old data for any part that fails. */
 export async function fetchCommodities(previous: CommodityData | undefined, since: string, cotSince: string) {
@@ -9,7 +18,9 @@ export async function fetchCommodities(previous: CommodityData | undefined, sinc
   const failures: string[] = [];
   for (const s of COMMODITY_SERIES) {
     try {
-      let pts = parseFredCsv(await getText(`https://fred.stlouisfed.org/graph/fredgraph.csv?id=${s.fred}&cosd=${since}`, "text/csv"));
+      let pts = s.fred
+        ? parseFredCsv(await getText(`https://fred.stlouisfed.org/graph/fredgraph.csv?id=${s.fred}&cosd=${since}`, "text/csv"))
+        : (await eiaXls(s.eia!)).filter(([d]) => d >= since);
       if (s.id === "CRUDE_STOCKS") pts = pts.map(([d, v]) => [d, v / 1000]); // thousand barrels → million
       if (!pts.length) throw new Error("no rows");
       prices[s.id] = pts;
