@@ -6,13 +6,18 @@ import { useEffect, useRef, useState } from "react";
 // The widget script reads its JSON config from the script tag's body, so we build the
 // tag by hand. It follows the page's light/dark theme and rebuilds when that changes.
 
+const isDark = () => {
+  if (typeof window === "undefined") return false;
+  const forced = document.documentElement.dataset.theme;
+  return forced ? forced === "dark" : window.matchMedia("(prefers-color-scheme: dark)").matches;
+};
+
 function useDarkMode() {
-  const [dark, setDark] = useState(false);
+  // Read the theme straight away (it isn't rendered, so this can't cause a hydration
+  // mismatch) so a widget isn't first built light and then rebuilt dark.
+  const [dark, setDark] = useState(isDark);
   useEffect(() => {
-    const read = () => {
-      const forced = document.documentElement.dataset.theme;
-      setDark(forced ? forced === "dark" : window.matchMedia("(prefers-color-scheme: dark)").matches);
-    };
+    const read = () => setDark(isDark());
     read();
     const mq = window.matchMedia("(prefers-color-scheme: dark)");
     mq.addEventListener("change", read);
@@ -71,6 +76,8 @@ export default function TradingViewWidget({
       colorTheme: dark ? "dark" : "light",
       theme: dark ? "dark" : "light",
       isTransparent: true,
+      // Full charts ignore isTransparent; give them the page's own surface colour.
+      ...(widget === "advanced-chart" ? { backgroundColor: dark ? "#1a1a19" : "#fcfcfb", gridColor: dark ? "rgba(255,255,255,0.06)" : "rgba(11,11,11,0.06)" } : {}),
       locale: "en",
       // The widget runs in TradingView's iframe, so the link must be absolute.
       // (the heatmap calls the same setting symbolUrl)
@@ -82,5 +89,8 @@ export default function TradingViewWidget({
     };
   }, [widget, configJson, dark, chartPath, visible]);
 
-  return <div ref={ref} className="tradingview-widget-container w-full" style={{ height }} />;
+  // colorScheme "light" on the frame's container: TradingView's pages don't declare a colour
+  // scheme, and browsers paint an iframe opaque white when its scheme differs from the
+  // parent's (dark). Matching it keeps the widget's transparent background see-through.
+  return <div ref={ref} className="tradingview-widget-container w-full" style={{ height, colorScheme: "light" }} />;
 }
