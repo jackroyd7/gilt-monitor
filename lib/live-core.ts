@@ -3,7 +3,7 @@
 
 import { giltYieldFromClean } from "./bond";
 import { giltsYield } from "./giltsyield-core";
-import { normaliseYieldUnits, parseBondRow, parsePriceRow } from "./live-parse";
+import { annualToSemiannual, normaliseYieldUnits, parseBondRow, parsePriceRow } from "./live-parse";
 import { excludedGilt } from "./parsers";
 import type { Gilt, LiveSnapshot } from "./types";
 
@@ -65,6 +65,8 @@ export async function fetchAllPrices(opts: { date?: string; concurrency?: number
   });
 
   normaliseYieldUnits(gilts);
+  // Their yields are annual-compounded; convert to the semi-annual gilt convention.
+  for (const g of gilts) if (g.yield != null) g.yield = annualToSemiannual(g.yield);
   for (const g of gilts) {
     if (g.yield == null && g.cleanPrice != null && g.coupon != null && g.maturity && g.type === "conventional") {
       const calc = giltYieldFromClean(g.cleanPrice, g.coupon, g.maturity, opts.date ?? today);

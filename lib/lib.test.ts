@@ -646,3 +646,10 @@ test("giltForward: positive carry lifts the forward yield; repo = yield leaves i
   assert.ok(Math.abs(flat.yield - spot.yield) * 100 < 0.6);
   assert.equal(giltForward(100, 4.5, "2026-12-01", "2026-10-28", 4, 91), null);
 });
+
+import { annualToSemiannual } from "./live-parse";
+
+test("annualToSemiannual converts giltsyield's annual-basis yields", () => {
+  assert.ok(Math.abs(annualToSemiannual(5.0625) - 5) < 1e-9);
+  assert.ok(Math.abs(annualToSemiannual(0) - 0) < 1e-12);
+});

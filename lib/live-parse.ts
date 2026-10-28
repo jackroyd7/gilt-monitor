@@ -63,6 +63,13 @@ export function parsePriceRow(r: Row) {
 }
 
 /**
+ * giltsyield.com quotes redemption yields with annual compounding; gilts (and the DMO,
+ * BoE curves and all our maths) use semi-annual. Checked against their own clean prices:
+ * annual-basis yields match to ~0.2bp, semi-annual ones are 5–8bp lower.
+ */
+export const annualToSemiannual = (y: number) => 200 * (Math.sqrt(1 + y / 100) - 1);
+
+/**
  * Yields may come as decimals (0.045) rather than percent (4.5). Conventional gilt
  * yields are never below 0.25%, so a median that low means decimals.
  */
