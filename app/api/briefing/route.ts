@@ -13,11 +13,23 @@ export async function POST() {
   if (!anthropicKey()) return Response.json({ error: "ANTHROPIC_API_KEY is not set in Vercel." }, { status: 400 });
   const today = londonClock().date;
   const existing = await latestBriefing();
-  // A fresh one written in the last 20 minutes is reused, so double clicks don't pay twice.
-  if (existing?.date === today && Date.now() - Date.parse(existing.generatedAt) < 20 * 60_000) return Response.json(existing);
-  try {
-    return Response.json(await runOnce(() => generateBriefing(dataDir())));
-  } catch (e) {
-    return Response.json({ error: (e as Error).message }, { status: 502 });
-  }
+  // One written in the last 5 minutes is reused, so double clicks don't pay twice.
+  if (existing?.date === today && Date.now() - Date.parse(existing.generatedAt) < 5 * 60_000) return Response.json(existing);
+  // Stream a space every few seconds while the briefing is written, so nothing between the
+  // browser and the server drops a connection that looks idle; then the JSON result.
+  const enc = new TextEncoder();
+  const body = new ReadableStream<Uint8Array>({
+    async start(controller) {
+      const keepAlive = setInterval(() => controller.enqueue(enc.encode(" ")), 5000);
+      try {
+        controller.enqueue(enc.encode(JSON.stringify(await runOnce(() => generateBriefing(dataDir())))));
+      } catch (e) {
+        controller.enqueue(enc.encode(JSON.stringify({ error: (e as Error).message })));
+      } finally {
+        clearInterval(keepAlive);
+        controller.close();
+      }
+    },
+  });
+  return new Response(body, { headers: { "Content-Type": "application/json; charset=utf-8", "Cache-Control": "no-store" } });
 }

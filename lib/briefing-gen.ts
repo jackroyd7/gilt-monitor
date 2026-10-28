@@ -119,11 +119,12 @@ export async function generateBriefing(dataDir: string): Promise<Briefing> {
     response = await client.beta.messages.create({
       model: "claude-opus-5-5",
       max_tokens: 16000,
-      output_config: { effort: "medium" },
+      // Low effort and a few searches keep it to a minute or two (well inside Vercel's time limit).
+      output_config: { effort: "low" },
       betas: ["server-side-fallback-2026-07-01"],
       fallbacks: "default",
       system: BRIEFING_SYSTEM,
-      tools: [{ type: "web_search_20260209", name: "web_search", max_uses: 10, user_location: { type: "approximate", country: "GB", city: "London", timezone: "Europe/London" } }],
+      tools: [{ type: "web_search_20260209", name: "web_search", max_uses: 6, user_location: { type: "approximate", country: "GB", city: "London", timezone: "Europe/London" } }],
       messages,
     });
     if (response.stop_reason !== "pause_turn") break;

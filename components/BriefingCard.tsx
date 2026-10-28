@@ -1,6 +1,5 @@
 "use client";
 
-import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import Modal from "./Modal";
 import { boldRuns, parseBriefing, type Briefing } from "@/lib/briefing";
@@ -22,36 +21,86 @@ function Rich({ text }: { text: string }) {
 }
 
 const SEEN_KEY = "gilt-monitor:briefing-seen";
+const LOCAL_KEY = "gilt-monitor:briefing";
+
+const newer = (a: Briefing | undefined, b: Briefing | undefined) =>
+  !a ? b : !b ? a : a.generatedAt >= b.generatedAt ? a : b;
 
 /**
  * The AI morning briefing as a pop-up: it opens by itself the first time you visit on the
- * day it was written (remembered per browser), and the card reopens it.
+ * day it was written (remembered per browser), and the card reopens it. A briefing written
+ * with the button is also kept in this browser, so it survives server restarts.
  */
 export default function BriefingCard({
-  briefing,
+  briefing: fromServer,
   today,
 }: {
   briefing: Briefing | undefined;
   today: string;
 }) {
   const [open, setOpen] = useState(false);
-  const router = useRouter();
-  const [writing, setWriting] = useState<{ busy: boolean; error?: string }>({
-    busy: false,
-  });
+  const [local, setLocal] = useState<Briefing | undefined>(undefined);
+  const [writing, setWriting] = useState<{
+    busy: boolean;
+    started?: number;
+    error?: string;
+  }>({ busy: false });
+  const [elapsed, setElapsed] = useState(0);
+  const briefing = newer(fromServer, local);
+
+  useEffect(() => {
+    try {
+      const saved = JSON.parse(
+        localStorage.getItem(LOCAL_KEY) ?? "null",
+      ) as Briefing | null;
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- one-off read of browser storage
+      if (saved?.markdown && saved.generatedAt) setLocal(saved);
+    } catch {}
+  }, []);
+
+  // Elapsed-time counter while writing.
+  useEffect(() => {
+    if (!writing.busy) return;
+    const t = setInterval(() => setElapsed((n) => n + 1), 1000);
+    return () => clearInterval(t);
+  }, [writing.busy]);
+
   const write = () => {
+    setElapsed(0);
     setWriting({ busy: true });
     fetch("/api/briefing", { method: "POST" })
       .then(async (r) => {
-        const d = (await r.json()) as { error?: string };
-        if (!r.ok || d.error) throw new Error(d.error ?? `error ${r.status}`);
+        // The server sends spaces while it works, then JSON; a timeout returns a web page instead.
+        const text = (await r.text()).trim();
+        let d: (Briefing & { error?: string }) | null = null;
         try {
-          localStorage.removeItem(SEEN_KEY); // let the new one pop up
+          d = JSON.parse(text);
+        } catch {
+          throw new Error(
+            r.status === 504 || /timed? ?out/i.test(text)
+              ? "The server timed out writing it. Please try again."
+              : `Unexpected reply from the server (${r.status}).`,
+          );
+        }
+        if (!d || d.error || !d.markdown)
+          throw new Error(d?.error ?? `error ${r.status}`);
+        try {
+          localStorage.setItem(LOCAL_KEY, JSON.stringify(d));
+          localStorage.setItem(SEEN_KEY, d.date);
         } catch {}
+        setLocal(d);
         setWriting({ busy: false });
-        router.refresh();
+        setOpen(true);
       })
-      .catch((e: Error) => setWriting({ busy: false, error: e.message }));
+      .catch((e: Error) =>
+        setWriting({
+          busy: false,
+          error:
+            e.message === "Failed to fetch"
+              ? "Lost connection to the server. Please try again."
+              : e.message,
+        }),
+      );
   };
   const writeButton = (
     <div className="mt-2 flex flex-wrap items-center gap-2 text-sm">
@@ -60,22 +109,27 @@ export default function BriefingCard({
         disabled={writing.busy}
         className="rounded-md bg-[color:var(--accent)] px-3 py-1.5 font-medium text-white disabled:opacity-60"
       >
-        {writing.busy ? "Writing… (1–3 minutes)" : "Write today's briefing now"}
+        {writing.busy
+          ? `Writing… ${elapsed}s (usually 1–2 minutes)`
+          : briefing?.date === today
+            ? "Write a fresh one"
+            : "Write today's briefing now"}
       </button>
       {writing.error && (
         <span style={{ color: "var(--critical)" }}>{writing.error}</span>
       )}
     </div>
   );
+
   useEffect(() => {
-    if (!briefing || briefing.date !== today) return;
+    if (!fromServer || fromServer.date !== today) return;
     try {
-      if (localStorage.getItem(SEEN_KEY) === briefing.date) return;
-      localStorage.setItem(SEEN_KEY, briefing.date);
+      if (localStorage.getItem(SEEN_KEY) === fromServer.date) return;
+      localStorage.setItem(SEEN_KEY, fromServer.date);
     } catch {}
     // eslint-disable-next-line react-hooks/set-state-in-effect -- open once per day, after reading browser storage
     setOpen(true);
-  }, [briefing, today]);
+  }, [fromServer, today]);
 
   if (!briefing) {
     return (
@@ -136,7 +190,7 @@ export default function BriefingCard({
         >
           Read the briefing →
         </button>
-        {briefing.date !== today && writeButton}
+        {writeButton}
       </section>
       {open && (
         <Modal

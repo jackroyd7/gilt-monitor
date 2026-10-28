@@ -23,7 +23,7 @@ Focus on markets overall. Mention individual companies only if they are market-m
 Be very selective: leave out anything a busy investor would not miss. Never pad a section; drop it if nothing matters.
 Hard limit: 500 words in total.
 
-Use web search to find overnight and early-morning moves (Asian session, US close, European futures), news since yesterday's close and today's economic calendar. Prefer reputable sources (central banks, statistics offices, Reuters, Bloomberg, FT, WSJ, BBC, CNBC). Our own closing data and headlines are supplied below; use them, and do not contradict them unless a search shows newer figures. Quote levels and changes with units (bp for yields, % for prices). If you cannot confirm a number, leave it out rather than guess.
+Use a handful of targeted web searches (no more than six) to find overnight and early-morning moves (Asian session, US close, European futures), news since yesterday's close and today's economic calendar. Prefer reputable sources (central banks, statistics offices, Reuters, Bloomberg, FT, WSJ, BBC, CNBC). Our own closing data and headlines are supplied below; use them, and do not contradict them unless a search shows newer figures. Quote levels and changes with units (bp for yields, % for prices). If you cannot confirm a number, leave it out rather than guess.
 
 Format exactly as markdown with these headings, in this order, omitting any with nothing important:
 ## The big picture
