@@ -105,10 +105,24 @@ export default function EquitiesBoard({ quotes }: { quotes?: StockQuotes }) {
   const sectorMarket: {
     id: string;
     label: string;
-    tv?: string;
+    etfs?: string;
     group?: string;
   } = SECTOR_MARKETS.find((x) => x.id === sectorId) ?? SECTOR_MARKETS[0];
-  const sectorStocks = sectorMarket.group ? stocksIn(sectorMarket.group) : [];
+  // ETF markets: one row per sector fund; stock markets: stocks grouped by sector.
+  const etfGroup = sectorMarket.etfs
+    ? SECTOR_GROUPS.find((g) => g.name === sectorMarket.etfs)
+    : undefined;
+  const sectorStocks: GridStock[] = etfGroup
+    ? etfGroup.symbols.flatMap((x) => {
+        const q = quotes?.quotes[x.name];
+        return q ? [{ symbol: x.name, name: x.displayName, quote: q }] : [];
+      })
+    : sectorMarket.group
+      ? stocksIn(sectorMarket.group)
+      : [];
+  const sectorOf = etfGroup
+    ? Object.fromEntries(etfGroup.symbols.map((x) => [x.name, x.displayName]))
+    : SECTOR_OF;
   const asOfFor = (list: GridStock[]) =>
     fmtAsOf(
       list
@@ -247,8 +261,8 @@ export default function EquitiesBoard({ quotes }: { quotes?: StockQuotes }) {
       <Panel
         title="Sector performance"
         note={
-          sectorMarket.tv
-            ? "Sector ETFs, today (live). Click one for its chart."
+          etfGroup
+            ? `Sector ETFs (${etfGroup.name === "US sectors" ? "SPDR" : "iShares STOXX Europe 600"}), % change on the previous close${asOfFor(sectorStocks) ? ` (as of ${asOfFor(sectorStocks)} UK, delayed)` : ""}.`
             : `Equal-weighted average move of the large stocks on our list, by sector${asOfFor(sectorStocks) ? ` (prices as of ${asOfFor(sectorStocks)} UK, delayed)` : ""}.`
         }
         action={
@@ -266,25 +280,7 @@ export default function EquitiesBoard({ quotes }: { quotes?: StockQuotes }) {
           </select>
         }
       >
-        {sectorMarket.tv ? (
-          <TradingViewWidget
-            key={sectorMarket.id}
-            widget="market-quotes"
-            height={480}
-            chartPath="/charts"
-            lazy
-            config={{
-              width: "100%",
-              height: 480,
-              symbolsGroups: SECTOR_GROUPS.filter(
-                (g) => g.name === sectorMarket.tv,
-              ),
-              showSymbolLogo: false,
-            }}
-          />
-        ) : (
-          <SectorTable stocks={sectorStocks} sectorOf={SECTOR_OF} />
-        )}
+        <SectorTable stocks={sectorStocks} sectorOf={sectorOf} />
       </Panel>
 
       <section>

@@ -2,16 +2,27 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { DEFAULT_CHART_SYMBOL, MARKET_GROUPS, symbolName } from "@/config/markets";
+import {
+  DEFAULT_CHART_SYMBOL,
+  MARKET_GROUPS,
+  symbolName,
+} from "@/config/markets";
 import { SYMBOL_CATALOGUE } from "@/config/symbol-catalogue";
 import SymbolPicker from "./SymbolPicker";
 import TradingViewWidget from "./TradingViewWidget";
 
 const RECENT_KEY = "gilt-monitor:recent-charts";
-const nameOf = (s: string) => symbolName(s) ?? SYMBOL_CATALOGUE.find((c) => c.symbol === s)?.name ?? s;
+const nameOf = (s: string) =>
+  symbolName(s) ?? SYMBOL_CATALOGUE.find((c) => c.symbol === s)?.name ?? s;
 
 /** Charts tab: search for an instrument and chart it full width. The symbol lives in the URL. */
-export default function ChartWorkbench({ symbol }: { symbol?: string }) {
+export default function ChartWorkbench({
+  symbol,
+  own,
+}: {
+  symbol?: string;
+  own?: React.ReactNode;
+}) {
   const router = useRouter();
   const current = symbol || DEFAULT_CHART_SYMBOL;
   const [picking, setPicking] = useState(false);
@@ -32,7 +43,10 @@ export default function ChartWorkbench({ symbol }: { symbol?: string }) {
       list = JSON.parse(localStorage.getItem(RECENT_KEY) ?? "[]");
     } catch {}
     if (!Array.isArray(list)) list = [];
-    list = [current, ...list.filter((s) => typeof s === "string" && s !== current)].slice(0, 8);
+    list = [
+      current,
+      ...list.filter((s) => typeof s === "string" && s !== current),
+    ].slice(0, 8);
     try {
       localStorage.setItem(RECENT_KEY, JSON.stringify(list));
     } catch {}
@@ -40,7 +54,8 @@ export default function ChartWorkbench({ symbol }: { symbol?: string }) {
     setRecent(list);
   }, [current]);
 
-  const open = (s: string) => router.push(`/charts?tvwidgetsymbol=${encodeURIComponent(s)}`);
+  const open = (s: string) =>
+    router.push(`/charts?tvwidgetsymbol=${encodeURIComponent(s)}`);
   const quick = MARKET_GROUPS.flatMap((g) => g.symbols);
 
   return (
@@ -89,26 +104,28 @@ export default function ChartWorkbench({ symbol }: { symbol?: string }) {
           <h2 className="text-sm font-semibold text-ink">{nameOf(current)}</h2>
           <span className="text-xs text-muted">{current}</span>
         </div>
-        <TradingViewWidget
-          key={current}
-          widget="advanced-chart"
-          height={height}
-          config={{
-            width: "100%",
-            height,
-            symbol: current,
-            interval: "D",
-            range: "12M",
-            timezone: "Europe/London",
-            style: "2",
-            allow_symbol_change: true,
-            watchlist: quick.map((s) => s.symbol),
-            details: false,
-            calendar: false,
-            hide_side_toolbar: false,
-            support_host: "https://www.tradingview.com",
-          }}
-        />
+        {own ?? (
+          <TradingViewWidget
+            key={current}
+            widget="advanced-chart"
+            height={height}
+            config={{
+              width: "100%",
+              height,
+              symbol: current,
+              interval: "D",
+              range: "12M",
+              timezone: "Europe/London",
+              style: "2",
+              allow_symbol_change: true,
+              watchlist: quick.map((s) => s.symbol),
+              details: false,
+              calendar: false,
+              hide_side_toolbar: false,
+              support_host: "https://www.tradingview.com",
+            }}
+          />
+        )}
       </div>
       {picking && (
         <SymbolPicker

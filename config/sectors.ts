@@ -50,8 +50,8 @@ export const SECTOR_OF: Record<string, string> = { ...build("LSE", UK), ...build
 
 /** Markets in the sector-performance dropdown. */
 export const SECTOR_MARKETS = [
-  { id: "us", label: "US · sector ETFs (live)", tv: "US sectors" },
-  { id: "eu", label: "Europe · STOXX 600 sector ETFs (live)", tv: "Europe sectors" },
+  { id: "us", label: "US · S&P 500 sector ETFs", etfs: "US sectors" },
+  { id: "eu", label: "Europe · STOXX 600 sector ETFs", etfs: "Europe sectors" },
   { id: "uk", label: "UK · FTSE 100 by sector", group: "UK stocks" },
   { id: "de", label: "Germany · large caps by sector", group: "German stocks" },
   { id: "fr", label: "France · large caps by sector", group: "French stocks" },

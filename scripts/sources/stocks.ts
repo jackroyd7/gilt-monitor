@@ -1,3 +1,4 @@
+import { SECTOR_GROUPS } from "../../config/equities";
 import { STOCKS } from "../../config/stock-catalogue";
 import { parseYahooChart, yahooSymbol, type StockQuotes } from "../../lib/stocks";
 import { getText } from "./http";
@@ -8,7 +9,9 @@ const GROUPS = new Set(["UK stocks", "German stocks", "French stocks", "Asian st
 /** One small request per stock, four at a time; a failed stock keeps its previous quote. */
 export async function fetchStockQuotes(previous: StockQuotes | undefined) {
   const quotes: StockQuotes["quotes"] = { ...(previous?.quotes ?? {}) };
-  const list = STOCKS.filter((s) => GROUPS.has(s.group));
+  // Plus the US and European sector ETFs for the sector-performance table.
+  const etfs = SECTOR_GROUPS.flatMap((g) => g.symbols.map((x) => ({ symbol: x.name, name: x.displayName, group: g.name })));
+  const list = [...STOCKS.filter((s) => GROUPS.has(s.group)), ...etfs];
   const failed: string[] = [];
   let next = 0;
   await Promise.all(

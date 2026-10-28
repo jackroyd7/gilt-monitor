@@ -19,6 +19,8 @@ export default function SectorTable({ stocks, sectorOf }: { stocks: GridStock[];
       return { sector, n: list.length, avg: list.reduce((a, s) => a + s.quote.change, 0) / list.length, best: sorted[0], worst: sorted[sorted.length - 1] };
     })
     .sort((a, b) => b.avg - a.avg);
+  // One stock per sector (an ETF per sector): no best/worst columns.
+  const single = rows.every((r) => r.n === 1);
   if (!rows.length) return <p className="text-sm text-muted">No prices yet: they arrive with the next run of the data job.</p>;
   const max = Math.max(...rows.map((r) => Math.abs(r.avg)), 0.5);
   const link = (s: GridStock) => (
@@ -33,16 +35,16 @@ export default function SectorTable({ stocks, sectorOf }: { stocks: GridStock[];
           <tr className="text-left text-xs text-muted">
             <th className="py-1 font-normal">Sector</th>
             <th className="w-1/4 py-1 font-normal" />
-            <th className="py-1 text-right font-normal">Avg move</th>
-            <th className="hidden py-1 pl-4 font-normal md:table-cell">Best</th>
-            <th className="hidden py-1 pl-4 font-normal md:table-cell">Worst</th>
+            <th className="py-1 text-right font-normal">{single ? "Move" : "Avg move"}</th>
+            {!single && <th className="hidden py-1 pl-4 font-normal md:table-cell">Best</th>}
+            {!single && <th className="hidden py-1 pl-4 font-normal md:table-cell">Worst</th>}
           </tr>
         </thead>
         <tbody className="num">
           {rows.map((r) => (
             <tr key={r.sector} className="border-t border-line">
               <td className="py-1.5 text-ink">
-                {r.sector} <span className="text-[11px] text-muted">({r.n})</span>
+                {r.sector} {!single && <span className="text-[11px] text-muted">({r.n})</span>}
               </td>
               <td className="py-1.5">
                 {/* A small bar centred on zero. */}
@@ -61,8 +63,8 @@ export default function SectorTable({ stocks, sectorOf }: { stocks: GridStock[];
               <td className="py-1.5 text-right font-medium" style={{ color: colour(r.avg) }}>
                 {pct(r.avg)}
               </td>
-              <td className="hidden py-1.5 pl-4 text-xs text-ink-2 md:table-cell">{link(r.best)}</td>
-              <td className="hidden py-1.5 pl-4 text-xs text-ink-2 md:table-cell">{r.n > 1 ? link(r.worst) : "–"}</td>
+              {!single && <td className="hidden py-1.5 pl-4 text-xs text-ink-2 md:table-cell">{link(r.best)}</td>}
+              {!single && <td className="hidden py-1.5 pl-4 text-xs text-ink-2 md:table-cell">{r.n > 1 ? link(r.worst) : "–"}</td>}
             </tr>
           ))}
         </tbody>
