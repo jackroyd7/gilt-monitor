@@ -146,7 +146,31 @@ export default async function FxPage() {
             </Card>
           </div>
         </div>
-        <Positioning rows={cotRows} />
+        <Positioning
+          rows={cotRows}
+          explainer={
+            <>
+              <p>
+                Every week the US regulator (CFTC) publishes how different kinds of trader are positioned in currency futures on
+                the Chicago exchange (CME). Numbers are <strong>net contracts</strong>: contracts held long minus contracts held
+                short. Positive means the group is betting on that currency rising against the dollar; negative means betting
+                on it falling. One sterling contract is £62,500, one euro contract €125,000.
+              </p>
+              <p>
+                <strong>Asset managers</strong> (pension funds, insurers, mutual funds) tend to hold slower-moving, strategic
+                positions. <strong>Leveraged funds</strong> (hedge funds, CTAs) are the faster, speculative money.{" "}
+                <strong>1w chg</strong> is the change on the previous week; <strong>% OI</strong> is the net position as a share
+                of all open contracts, which makes positions comparable across currencies and over time.
+              </p>
+              <p>
+                How it is used: very large positions, especially from leveraged funds, show a &ldquo;crowded&rdquo; trade that
+                can reverse sharply if news goes the other way (a squeeze); a big swing in a week shows sentiment changing. It
+                covers the CME futures market only, not the much larger over-the-counter FX market, so treat it as a sentiment
+                gauge. Positions are as of Tuesday and published on Friday.
+              </p>
+            </>
+          }
+        />
         <div className="grid gap-4 lg:grid-cols-2">
           <Card title="Cross rates" subtitle="Live, from TradingView. Click a rate for its chart." exportable={false}>
             <TradingViewWidget widget="forex-cross-rates" height={400} chartPath="/charts" lazy config={{ width: "100%", height: 400, currencies: CURRENCIES }} />

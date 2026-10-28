@@ -326,18 +326,27 @@ export function Positioning({
   subtitle = "Net long contracts on CME currency futures, weekly (positions as of Tuesday, published Friday).",
   groups = ["Asset managers", "Leveraged funds"],
   label = "Currency",
+  explainer,
 }: {
   rows: CotSeries[];
   title?: string;
   subtitle?: string;
   groups?: [string, string];
   label?: string;
+  /** Plain-English notes shown under "What this shows". */
+  explainer?: React.ReactNode;
 }) {
   const [id, setId] = useState(rows[0]?.id);
   const r = rows.find((x) => x.id === id) ?? rows[0];
   if (!r) return <Card title={title}>No CFTC data yet.</Card>;
   return (
     <Card title={title} subtitle={`${subtitle} Latest ${r.date ?? "–"}.`}>
+      {explainer && (
+        <details className="mb-3 rounded-md bg-surface-2/60 px-3 py-2 text-xs text-ink-2" data-export-ignore>
+          <summary className="cursor-pointer font-medium text-ink">What this shows</summary>
+          <div className="mt-2 space-y-1.5 leading-relaxed">{explainer}</div>
+        </details>
+      )}
       <div className="overflow-x-auto">
         <table className="w-full text-sm">
           <thead>

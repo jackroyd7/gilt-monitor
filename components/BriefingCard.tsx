@@ -1,5 +1,6 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import Modal from "./Modal";
 import { boldRuns, parseBriefing, type Briefing } from "@/lib/briefing";
@@ -34,6 +35,38 @@ export default function BriefingCard({
   today: string;
 }) {
   const [open, setOpen] = useState(false);
+  const router = useRouter();
+  const [writing, setWriting] = useState<{ busy: boolean; error?: string }>({
+    busy: false,
+  });
+  const write = () => {
+    setWriting({ busy: true });
+    fetch("/api/briefing", { method: "POST" })
+      .then(async (r) => {
+        const d = (await r.json()) as { error?: string };
+        if (!r.ok || d.error) throw new Error(d.error ?? `error ${r.status}`);
+        try {
+          localStorage.removeItem(SEEN_KEY); // let the new one pop up
+        } catch {}
+        setWriting({ busy: false });
+        router.refresh();
+      })
+      .catch((e: Error) => setWriting({ busy: false, error: e.message }));
+  };
+  const writeButton = (
+    <div className="mt-2 flex flex-wrap items-center gap-2 text-sm">
+      <button
+        onClick={write}
+        disabled={writing.busy}
+        className="rounded-md bg-[color:var(--accent)] px-3 py-1.5 font-medium text-white disabled:opacity-60"
+      >
+        {writing.busy ? "Writing… (1–3 minutes)" : "Write today's briefing now"}
+      </button>
+      {writing.error && (
+        <span style={{ color: "var(--critical)" }}>{writing.error}</span>
+      )}
+    </div>
+  );
   useEffect(() => {
     if (!briefing || briefing.date !== today) return;
     try {
@@ -49,10 +82,10 @@ export default function BriefingCard({
       <section className="card p-4">
         <h2 className="text-sm font-semibold text-ink">Morning briefing</h2>
         <p className="mt-1 text-sm text-muted">
-          No briefing yet. It is written at about 06:40 UK time on weekdays by
-          the “Morning briefing” GitHub Action (needs the{" "}
-          <code>ANTHROPIC_API_KEY</code> repository secret).
+          No briefing yet. One is written automatically on weekday mornings
+          (about 06:35 UK time), or write one now.
         </p>
+        {writeButton}
       </section>
     );
   }
@@ -87,10 +120,7 @@ export default function BriefingCard({
   const lead = sections[0]?.items.find((b) => b.type !== "h")?.text;
   return (
     <>
-      <button
-        onClick={() => setOpen(true)}
-        className="card block w-full p-4 text-left hover:border-[color:var(--accent)]"
-      >
+      <section className="card p-4">
         <div className="flex flex-wrap items-baseline justify-between gap-2">
           <h2 className="text-base font-semibold text-ink">Morning briefing</h2>
           {stamp}
@@ -100,10 +130,14 @@ export default function BriefingCard({
             <Rich text={lead} />
           </p>
         )}
-        <span className="mt-2 inline-block text-sm font-medium text-accent">
+        <button
+          onClick={() => setOpen(true)}
+          className="mt-2 inline-block text-sm font-medium text-accent"
+        >
           Read the briefing →
-        </span>
-      </button>
+        </button>
+        {briefing.date !== today && writeButton}
+      </section>
       {open && (
         <Modal
           title="Morning briefing"

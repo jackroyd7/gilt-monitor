@@ -7,12 +7,13 @@ import { Card, PageHeader, TileGrid } from "@/components/Tiles";
 import TradingViewWidget from "@/components/TradingViewWidget";
 import { headlineMetrics, tile } from "@/lib/analytics";
 import { londonClock } from "@/lib/briefing";
-import { loadBriefing, loadMarket } from "@/lib/data";
+import { latestBriefing } from "@/lib/briefing-store";
+import { loadMarket } from "@/lib/data";
 import { getNews } from "@/lib/news-fetch";
 
 export default async function OverviewPage() {
   await connection();
-  const [briefing, { curves }, news] = await Promise.all([loadBriefing(), loadMarket(), getNews()]);
+  const [briefing, { curves }, news] = await Promise.all([latestBriefing(), loadMarket(), getNews()]);
   const tiles = headlineMetrics(curves).slice(0, 5).map(tile);
   const top = [...news.items].sort((a, b) => (b.score ?? 0) - (a.score ?? 0)).slice(0, 8);
   return (

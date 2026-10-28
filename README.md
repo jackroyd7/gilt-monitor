@@ -64,7 +64,7 @@ Market data history is kept in `data/curves/*.json` (5 years by default, one lin
    - `DASHBOARD_PASSWORD`: protects the whole site. You sign in on a login page; Basic auth (any username) also works for scripts.
    - `GILTSYIELD_API_KEY`: from your giltsyield.com Profile page.
    - `FINNHUB_API_KEY` (optional): free key from finnhub.io, for the earnings calendar.
-3. **GitHub secret for the briefing**: add `ANTHROPIC_API_KEY` the same way as below (repo → Settings → Secrets and variables → Actions). To write one straight away: Actions → *Morning briefing* → *Run workflow*.
+3. **Morning briefing**: written on Vercel with the same `ANTHROPIC_API_KEY`, by a weekday cron (`vercel.json`, 06:35 UTC) and the *Write today's briefing now* button on the Overview. Optional: set `CRON_SECRET` in Vercel (any random string) so only Vercel's cron can trigger it, and connect Upstash Redis (Vercel → Storage) so a briefing survives redeploys. The *Morning briefing* GitHub Action does the same if you add `ANTHROPIC_API_KEY` as a repository secret; without it, it skips.
 4. **GitHub secret** (recommended): repo → Settings → Secrets and variables → Actions → *New repository secret*, name `GILTSYIELD_API_KEY`. The daily job then records giltsyield.com closes for every gilt; without it, it records DMO closes.
 5. **First data load**: GitHub → Actions → *Update market data* → *Run workflow*. Tick **backfill** for about 3 years of curve history, and set **gilt_days** to backfill per-gilt closes (25 covers the 1-month change; 260 is a year, at roughly 75 giltsyield calls per day backfilled). After that it runs on its own.
 

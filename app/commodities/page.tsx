@@ -122,6 +122,27 @@ export default async function CommoditiesPage() {
           subtitle="Net long contracts, weekly disaggregated report (positions as of Tuesday, published Friday). Managed money is mostly hedge funds and CTAs."
           groups={["Managed money", "Producers & merchants"]}
           label="Contract"
+          explainer={
+            <>
+              <p>
+                From the US regulator&apos;s (CFTC) weekly &ldquo;disaggregated&rdquo; report on US futures markets. Numbers are{" "}
+                <strong>net contracts</strong>: long minus short. Positive is a net bet on (or exposure to) higher prices.
+              </p>
+              <p>
+                <strong>Managed money</strong> is hedge funds and CTAs: speculative positioning, the group that drives
+                momentum. <strong>Producers &amp; merchants</strong> are oil companies, miners, farmers, refiners and traders who
+                mostly <em>hedge</em> what they produce or use, so they are usually net short and move opposite to the
+                speculators (selling forward more as prices rise). <strong>1w chg</strong> is the change on the previous week;{" "}
+                <strong>% OI</strong> is the net position as a share of all open contracts, comparable across markets.
+              </p>
+              <p>
+                How it is used: speculative positions near multi-year extremes flag a crowded trade, prone to sharp reversals
+                if fundamentals disappoint (record longs) or to short-covering rallies (record shorts). A fast build-up shows
+                money chasing a move. Brent and other ICE-listed contracts aren&apos;t in this US report, so oil here is WTI.
+                Positions are as of Tuesday and published on Friday.
+              </p>
+            </>
+          }
         />
         <section>
           <h2 className="mb-2 text-sm font-semibold text-ink">Ratios</h2>

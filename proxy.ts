@@ -4,7 +4,8 @@ import { AUTH_COOKIE, safeEqual, sessionToken } from "@/lib/auth";
 // Password-protects the whole site when DASHBOARD_PASSWORD is set. Visitors sign in once on
 // /login and get a long-lived session cookie (home-screen web apps on iPhone don't handle the
 // browser's Basic-auth pop-up well). Basic auth is still accepted, e.g. for scripts.
-const PUBLIC = ["/login", "/manifest.webmanifest", "/icon", "/apple-icon", "/pwa-icon"];
+// The briefing cron route checks CRON_SECRET itself and writes at most one briefing a day.
+const PUBLIC = ["/login", "/manifest.webmanifest", "/icon", "/apple-icon", "/pwa-icon", "/api/briefing/cron"];
 
 export async function proxy(request: NextRequest) {
   const password = process.env.DASHBOARD_PASSWORD;
