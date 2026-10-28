@@ -1,50 +1,56 @@
 {
-  "updatedAt": "2026-10-28T17:08:53.565Z",
+  "updatedAt": "2026-10-28T17:31:49.754Z",
   "sources": {
     "boe": {
       "ok": true,
-      "checkedAt": "2026-10-28T17:08:53.565Z",
+      "checkedAt": "2026-10-28T17:31:49.754Z",
       "latestDate": "2026-10-27",
       "message": "uk_inflation, uk_nominal, uk_real, uk_ois"
     },
     "bundesbank": {
       "ok": true,
-      "checkedAt": "2026-10-28T17:08:53.565Z",
+      "checkedAt": "2026-10-28T17:31:49.754Z",
       "latestDate": "2026-10-28"
     },
     "ust": {
       "ok": true,
-      "checkedAt": "2026-10-28T17:08:53.565Z",
+      "checkedAt": "2026-10-28T17:31:49.754Z",
       "latestDate": "2026-10-27"
     },
     "dmo": {
       "ok": true,
-      "checkedAt": "2026-10-28T17:08:53.565Z",
+      "checkedAt": "2026-10-28T17:31:49.754Z",
       "latestDate": "2026-10-28",
       "message": "102 gilts, 0 with yields; prices unavailable: https://www.dmo.gov.uk/data/XmlDataReport?reportCode=D10B: no usable rows"
     },
     "gilt_history": {
       "ok": true,
-      "checkedAt": "2026-10-28T17:08:53.565Z",
+      "checkedAt": "2026-10-28T17:31:49.754Z",
       "latestDate": "2026-10-28",
       "message": "giltsyield price time 2026-10-28 14:05; giltsyield 2026-10-28: 102 gilts"
     },
     "boe_fx": {
       "ok": true,
-      "checkedAt": "2026-10-28T17:08:53.565Z",
+      "checkedAt": "2026-10-28T17:31:49.754Z",
       "latestDate": "2026-10-27"
     },
     "cftc": {
       "ok": true,
-      "checkedAt": "2026-10-28T17:08:53.565Z",
+      "checkedAt": "2026-10-28T17:31:49.754Z",
       "latestDate": "2026-10-20",
       "message": "CHF, GBP, JPY, EUR"
     },
     "macro": {
       "ok": true,
-      "checkedAt": "2026-10-28T17:08:53.565Z",
+      "checkedAt": "2026-10-28T17:31:49.754Z",
       "latestDate": "2026-10-01",
       "message": "37 series"
+    },
+    "commodities": {
+      "ok": true,
+      "checkedAt": "2026-10-28T17:31:49.754Z",
+      "latestDate": "2026-10-27",
+      "message": "failed: CRUDE_STOCKS: 404 Not Found from https://fred.stlouisfed.org/graph/fredgraph.csv?id=WCESTUS1&cosd=2021-10-28"
     }
   }
 }
