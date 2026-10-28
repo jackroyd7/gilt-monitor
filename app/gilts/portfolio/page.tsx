@@ -4,6 +4,7 @@ import { MonthlyBars } from "@/components/charts";
 import GiltTable from "@/components/GiltTable";
 import { Card, PageHeader } from "@/components/Tiles";
 import { giltRows } from "@/lib/analytics";
+import { DV01_BUCKETS, SCENARIOS, dv01 } from "@/lib/rv";
 import LiveBar from "@/components/LiveBar";
 import { loadMarketWithLive } from "@/lib/data";
 import { liveInfo } from "@/lib/live";
@@ -118,6 +119,22 @@ export default async function PortfolioPage({ searchParams }: PageProps<"/gilts/
   const held = new Map(
     holdings.map((h) => [String(h[isinKey ?? ""] ?? "").trim(), nomKey ? numOf(h[nomKey]) : null] as const),
   );
+  // Interest-rate risk of the holdings: DV01 by maturity bucket and scenario P&L
+  // (first-order, duration only; linkers move with their real yield).
+  const risk = gilts.flatMap((g) => {
+    const nominal = held.get(g.isin);
+    const price = g.dirtyPrice ?? g.cleanPrice;
+    if (nominal == null || price == null || g.modDuration == null) return [];
+    return [{ g, nominal, value: (nominal * price) / 100, dv01: dv01(nominal, price, g.modDuration) }];
+  });
+  const totalDv01 = risk.reduce((a, r) => a + r.dv01, 0);
+  const buckets = DV01_BUCKETS.map((b) => {
+    const inB = risk.filter((r) => r.g.years >= b.lo && r.g.years < b.hi);
+    return { label: b.label, dv01: inB.reduce((a, r) => a + r.dv01, 0), value: inB.reduce((a, r) => a + r.value, 0) };
+  });
+  const scenarios = SCENARIOS.map((sc) => ({ label: sc.label, pnl: risk.reduce((a, r) => a - r.dv01 * sc.shift(r.g.years), 0) }));
+  const gbp = (v: number) => `${v < 0 ? "−" : ""}£${Math.abs(Math.round(v)).toLocaleString("en-GB")}`;
+
   const heldRows = gilts
     .filter((g) => held.has(g.isin))
     .map((g) => ({ ...g, held: held.get(g.isin)?.toLocaleString("en-GB") ?? "✓" }));
@@ -145,6 +162,47 @@ export default async function PortfolioPage({ searchParams }: PageProps<"/gilts/
         <Card title="Holdings against the market" subtitle={isinKey ? "Your gilts, with today’s yield, curve and OIS spreads" : "Couldn’t find an ISIN column in the book-yield response to join on"}>
           {heldRows.length ? <GiltTable rows={heldRows} showHeld /> : <p className="text-sm text-muted">No holdings matched to DMO gilts.</p>}
         </Card>
+        {risk.length > 0 && (
+          <div className="grid gap-4 lg:grid-cols-2">
+            <Card title="Interest-rate risk (DV01)" subtitle={`£ gained per 1bp fall in yields. Total ${gbp(totalDv01)} per bp across ${risk.length} holdings.`}>
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="text-left text-xs text-muted">
+                    <th className="py-1 font-normal">Maturity</th>
+                    <th className="py-1 text-right font-normal">Market value</th>
+                    <th className="py-1 text-right font-normal">DV01 £/bp</th>
+                    <th className="py-1 text-right font-normal">Share</th>
+                  </tr>
+                </thead>
+                <tbody className="num">
+                  {buckets.map((b) => (
+                    <tr key={b.label} className="border-t border-line">
+                      <td className="py-1.5 text-ink">{b.label}</td>
+                      <td className="py-1.5 text-right text-ink-2">{gbp(b.value)}</td>
+                      <td className="py-1.5 text-right text-ink">{gbp(b.dv01)}</td>
+                      <td className="py-1.5 text-right text-ink-2">{totalDv01 ? `${((b.dv01 / totalDv01) * 100).toFixed(0)}%` : "–"}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </Card>
+            <Card title="What if yields move?" subtitle="Approximate change in value (duration only, no convexity). Steepeners and flatteners pivot linearly between 2 and 30 years; linkers are moved by the same amount in real yield.">
+              <table className="w-full text-sm">
+                <tbody className="num">
+                  {scenarios.map((sc) => (
+                    <tr key={sc.label} className="border-t border-line first:border-t-0">
+                      <td className="py-1.5 text-ink">{sc.label}</td>
+                      <td className="py-1.5 text-right font-medium" style={{ color: sc.pnl > 0 ? "var(--down)" : sc.pnl < 0 ? "var(--up)" : undefined }}>
+                        {sc.pnl > 0 ? "+" : ""}
+                        {gbp(sc.pnl)}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </Card>
+          </div>
+        )}
         <div className="grid gap-4 lg:grid-cols-2">
           <Card title="Upcoming cash flows" subtitle="Coupons and redemptions by month">
             {flows.ok ? <MonthlyBars data={monthlyFlows(flows.value)} /> : <p className="text-sm text-muted">{flows.error}</p>}

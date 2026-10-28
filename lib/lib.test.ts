@@ -553,3 +553,22 @@ test("parseEiaSheet reads dated rows and skips headers", () => {
   const rows = [["Sourcekey", "WCESTUS1"], ["Date", "Weekly U.S. Ending Stocks"], [new Date(Date.UTC(2026, 9, 16)), 421003], [46323, 419500]];
   assert.deepEqual(parseEiaSheet(rows), [["2026-10-16", 421003], ["2026-10-28", 419500]]);
 });
+
+import { carryRoll, changeSince, combo, dv01, forwardRate, zScore } from "./rv";
+
+test("RV maths: forwards, carry/roll, z-scores, combos, DV01", () => {
+  const flat: CurveSet = { id: "uk_nominal", label: "", source: "", basis: "zero_cc", tenors: [1, 2, 5], rows: { "2026-01-01": [4, 4, 4] } };
+  assert.ok(Math.abs(forwardRate(flat, "2026-01-01", 1, 2)! - toSemiannual(4, "zero_cc")) < 1e-9);
+  const up: CurveSet = { ...flat, rows: { "2026-01-01": [3, 4, 4] } };
+  assert.ok(Math.abs(forwardRate(up, "2026-01-01", 1, 2)! - toSemiannual(5, "zero_cc")) < 1e-9); // (4·2 − 3·1)/1 = 5
+  // Upward-sloping fit: rolling down earns; carry = (y − repo) × h.
+  const fit = { b0: 5, b1: -1, b2: 0, tau: 2, rmse: 0 };
+  const cr = carryRoll(4.5, 10, 8, fit, 4, 0.25)!;
+  assert.ok(Math.abs(cr.carryPct - 0.125) < 1e-12);
+  assert.ok(cr.rollBp > 0 && cr.totalPct > cr.carryPct);
+  const pts: [string, number][] = Array.from({ length: 100 }, (_, i) => [`2026-01-${String((i % 28) + 1).padStart(2, "0")}`, i === 99 ? 10 : i % 2]);
+  assert.ok(zScore(pts, 100)! > 5);
+  assert.equal(changeSince([["2026-01-01", 1], ["2026-02-15", 4]], 31), 3);
+  assert.deepEqual(combo([{ series: [["d1", 4], ["d2", 4.1]], weight: -1 }, { series: [["d1", 4.5]], weight: 1 }]), [["d1", 50]]);
+  assert.equal(dv01(1_000_000, 100, 7), 700);
+});

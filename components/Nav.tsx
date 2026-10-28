@@ -12,6 +12,7 @@ export const GILT_PAGES = [
   { href: "/gilts/curves", label: "Curves" },
   { href: "/gilts/ois", label: "vs OIS" },
   { href: "/gilts/cross-market", label: "Cross-market" },
+  { href: "/gilts/rv", label: "Relative value" },
   { href: "/gilts/portfolio", label: "Portfolio" },
 ];
 
