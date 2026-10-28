@@ -18,7 +18,7 @@ export default function HeadlineList({ items, empty = "No headlines in the last 
           <li key={i.id}>
             <button onClick={() => setOpen(i)} className="block w-full py-2 text-left hover:text-accent">
               <span className="text-sm text-ink">{i.title}</span>
-              <span className="mt-0.5 block text-xs text-muted">
+              <span className="mt-0.5 block text-xs text-muted" suppressHydrationWarning>
                 {i.source} · {when(i.published)}
               </span>
             </button>

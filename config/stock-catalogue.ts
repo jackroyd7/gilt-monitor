@@ -10,6 +10,19 @@ const FR = `EURONEXT:MC LVMH|EURONEXT:OR L'Oréal|EURONEXT:RMS Hermès|EURONEXT:
 
 const DE = `XETR:SAP SAP|XETR:SIE Siemens|XETR:ALV Allianz|XETR:DTE Deutsche Telekom|XETR:MUV2 Munich Re|XETR:RHM Rheinmetall|XETR:MBG Mercedes-Benz|XETR:BMW BMW|XETR:VOW3 Volkswagen|XETR:BAS BASF|XETR:IFX Infineon|XETR:DBK Deutsche Bank|XETR:DHL DHL Group|XETR:BAYN Bayer|XETR:ADS Adidas|XETR:DB1 Deutsche Börse|XETR:EOAN E.ON|XETR:RWE RWE|XETR:HNR1 Hannover Re|XETR:MRK Merck KGaA|XETR:SHL Siemens Healthineers|XETR:ENR Siemens Energy|XETR:VNA Vonovia|XETR:HEI Heidelberg Materials|XETR:CBK Commerzbank|XETR:BEI Beiersdorf|XETR:FRE Fresenius|XETR:FME Fresenius Medical Care|XETR:P911 Porsche AG|XETR:PAH3 Porsche SE|XETR:CON Continental|XETR:HEN3 Henkel|XETR:MTX MTU Aero Engines|XETR:SY1 Symrise|XETR:QIA Qiagen|XETR:ZAL Zalando|XETR:SRT3 Sartorius|XETR:BNR Brenntag|XETR:DTG Daimler Truck|XETR:G1A GEA Group|XETR:HFG HelloFresh|XETR:LEG LEG Immobilien|XETR:LHA Lufthansa|XETR:PUM Puma|XETR:TKA Thyssenkrupp|XETR:EVK Evonik|XETR:KGX Kion|XETR:NEM Nemetschek|XETR:TLX Talanx|XETR:HOT Hochtief|XETR:FRA Fraport|XETR:AIXA Aixtron|XETR:SDF K+S|XETR:LXS Lanxess|XETR:WCH Wacker Chemie|XETR:TEG TAG Immobilien|XETR:BOSS Hugo Boss|XETR:KBX Knorr-Bremse|XETR:RAA Rational|XETR:EVD CTS Eventim|XETR:SIX2 Sixt|XETR:FNTN Freenet|XETR:UTDI United Internet|XETR:AT1 Aroundtown|XETR:G24 Scout24|XETR:HAG Hensoldt|XETR:TMV TeamViewer|XETR:NDA Aurubis|XETR:JEN Jenoptik|XETR:KRN Krones|XETR:DUE Dürr|XETR:SZG Salzgitter|XETR:BC8 Bechtle|XETR:AFX Carl Zeiss Meditec|XETR:DHER Delivery Hero|XETR:TUI1 TUI|XETR:RRTL RTL Group|XETR:PSM ProSiebenSat.1|XETR:SHA Schaeffler|XETR:GXI Gerresheimer|XETR:STM Stabilus|XETR:EVT Evotec|XETR:RDC Redcare Pharmacy|XETR:WAF Siltronic|XETR:BVB Borussia Dortmund|XETR:DWNI Deutsche Wohnen|XETR:1COV Covestro|XETR:OHB OHB|XETR:RENK Renk|XETR:HLAG Hapag-Lloyd|XETR:TRATON Traton|XETR:FPE3 Fuchs|XETR:IOS Ionos|XETR:CWC CEWE|XETR:PBB Deutsche Pfandbriefbank`;
 
+// Asian market movers and companies with big ties to Western markets.
+const ASIA = `TWSE:2330 TSMC|TWSE:2317 Hon Hai (Foxconn)|TWSE:2454 MediaTek|KRX:005930 Samsung Electronics|KRX:000660 SK Hynix|KRX:005380 Hyundai Motor|KRX:373220 LG Energy Solution|TSE:7203 Toyota|TSE:6758 Sony|TSE:9984 SoftBank Group|TSE:8035 Tokyo Electron|TSE:8306 Mitsubishi UFJ|TSE:6861 Keyence|TSE:9983 Fast Retailing|TSE:7974 Nintendo|TSE:6501 Hitachi|TSE:6857 Advantest|TSE:4063 Shin-Etsu Chemical|TSE:7267 Honda|HKEX:700 Tencent|HKEX:9988 Alibaba|HKEX:1211 BYD|HKEX:1810 Xiaomi|HKEX:3690 Meituan|SZSE:300750 CATL|NASDAQ:PDD PDD Holdings|NASDAQ:JD JD.com|NASDAQ:BIDU Baidu`;
+
+/** US-listed shares (ADRs) of Asian companies; earnings dates are looked up under these. */
+export const US_LISTINGS: Record<string, string> = {
+  "TWSE:2330": "TSM",
+  "TSE:7203": "TM",
+  "TSE:6758": "SONY",
+  "TSE:8306": "MUFG",
+  "TSE:7267": "HMC",
+  "HKEX:9988": "BABA",
+};
+
 const parse = (list: string, group: string) =>
   list.split("|").map((entry) => {
     const i = entry.indexOf(" ");
@@ -21,4 +34,5 @@ export const STOCKS = [
   ...parse(US, "US stocks"),
   ...parse(FR, "French stocks"),
   ...parse(DE, "German stocks"),
+  ...parse(ASIA, "Asian stocks"),
 ];

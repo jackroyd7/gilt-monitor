@@ -468,3 +468,33 @@ test("FX analytics: changes, realised vol and correlation", () => {
   const c = rollingCorrelation(alt, spread, 10);
   assert.ok(c.length > 0 && c.every(([, x]) => x > 0.99));
 });
+
+import { finnhubSymbol, matchEarnings } from "./earnings";
+
+test("finnhubSymbol maps TradingView symbols to Finnhub's", () => {
+  assert.equal(finnhubSymbol("NASDAQ:AAPL"), "AAPL");
+  assert.equal(finnhubSymbol("NYSE:BRK.B"), "BRK.B");
+  assert.equal(finnhubSymbol("LSE:BP."), "BP.L");
+  assert.equal(finnhubSymbol("LSE:BT.A"), "BT-A.L");
+  assert.equal(finnhubSymbol("XETR:SAP"), "SAP.DE");
+  assert.equal(finnhubSymbol("HKEX:700"), "0700.HK");
+  assert.equal(finnhubSymbol("TWSE:2330", { "TWSE:2330": "TSM" }), "TSM");
+  assert.equal(finnhubSymbol("BITSTAMP:BTCUSD"), null);
+});
+
+test("matchEarnings keeps listed stocks only", () => {
+  const stocks = [
+    { symbol: "NASDAQ:AAPL", name: "Apple", group: "US stocks" },
+    { symbol: "TWSE:2330", name: "TSMC", group: "Asian stocks" },
+  ];
+  const ev = matchEarnings(
+    [
+      { symbol: "TSM", date: "2026-01-15", hour: "bmo", epsEstimate: 2.1, epsActual: null, quarter: 4, year: 2025 },
+      { symbol: "AAPL", date: "2026-01-29", hour: "amc", epsEstimate: 2.3 },
+      { symbol: "ZZZZ", date: "2026-01-29" },
+    ],
+    stocks,
+    { "TWSE:2330": "TSM" },
+  );
+  assert.deepEqual(ev.map((e) => [e.name, e.region, e.hour]), [["TSMC", "Asia", "bmo"], ["Apple", "US", "amc"]]);
+});
