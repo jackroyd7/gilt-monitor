@@ -609,3 +609,8 @@ test("yahooSymbol and parseYahooChart", () => {
   assert.ok(Math.abs(q.change - 5) < 1e-9);
   assert.equal(parseYahooChart({ chart: { result: [] } }), null);
 });
+
+test("sanitizeLayout drops cards whose feeds widgets can't show", () => {
+  const l = sanitizeLayout({ "Equity indices": [{ symbol: "FTSE:MCX", name: "FTSE 250" }, { symbol: "FOREXCOM:UKXGBP", name: "FTSE 100" }, { symbol: "FOREXCOM:EUSTX50", name: "Euro Stoxx 50" }], _v: 2 })!;
+  assert.deepEqual(l["Equity indices"].map((c) => c.symbol), ["FOREXCOM:UKXGBP"]);
+});

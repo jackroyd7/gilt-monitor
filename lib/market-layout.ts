@@ -31,6 +31,9 @@ function upgrade(layout: MarketLayout, fromVersion: number): MarketLayout {
   return out;
 }
 
+/** Cards whose feeds TradingView's free widgets don't serve; dropped from saved layouts. */
+const UNAVAILABLE = new Set(["FTSE:MCX", "FOREXCOM:EUSTX50", "TVC:VIX"]);
+
 /** What gets stored: the layout plus the version it was saved at. */
 export const layoutForStorage = (layout: MarketLayout) => ({ ...layout, _v: LAYOUT_VERSION });
 
@@ -67,7 +70,9 @@ export function sanitizeLayout(saved: unknown): MarketLayout | null {
     any = true;
     out[g.title] = list.reduce<MarketSymbol[]>(
       (acc, c) =>
-        c && typeof c === "object" && typeof c.symbol === "string" && typeof c.name === "string" ? addCard(acc, c) : acc,
+        c && typeof c === "object" && typeof c.symbol === "string" && typeof c.name === "string" && !UNAVAILABLE.has(c.symbol.toUpperCase())
+          ? addCard(acc, c)
+          : acc,
       [],
     );
   }

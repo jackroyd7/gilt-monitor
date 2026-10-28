@@ -39,17 +39,15 @@ const EXTRAS: CatalogueEntry[] = [
 
 const ALIASES: Record<string, string[]> = {
   "FOREXCOM:UKXGBP": ["footsie", "ftse", "uk 100", "ukx"],
-  "FTSE:MCX": ["ftse 250", "mid cap", "midcap"],
   "FOREXCOM:SPXUSD": ["spx", "s&p", "sp500", "us 500"],
   "FOREXCOM:NSXUSD": ["ndx", "nasdaq", "tech"],
   "FOREXCOM:DJI": ["dow", "djia"],
-  "FOREXCOM:EUSTX50": ["sx5e", "stoxx", "europe"],
   "FOREXCOM:GRXEUR": ["dax", "germany"],
   "FOREXCOM:FRXEUR": ["cac", "france"],
   "FOREXCOM:JP225": ["nikkei", "japan"],
   "FOREXCOM:HKXHKD": ["hang seng", "hsi", "hong kong"],
   "FOREXCOM:AUXAUD": ["asx", "australia"],
-  "TVC:VIX": ["volatility", "fear"],
+  "CAPITALCOM:VIX": ["volatility", "fear"],
   "FX:GBPUSD": ["cable", "sterling", "pound"],
   "FX_IDC:GBPEUR": ["sterling", "pound"],
   "FX:EURGBP": ["sterling", "pound"],

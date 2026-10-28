@@ -72,5 +72,5 @@ export const STYLE_CHARTS = [
   { symbol: "AMEX:IWM/AMEX:SPY", title: "Small vs large caps (US)", note: "Russell 2000 ÷ S&P 500" },
   { symbol: "AMEX:RSP/AMEX:SPY", title: "Equal vs cap weight (US)", note: "Breadth: average stock ÷ index" },
   { symbol: "FOREXCOM:UKXGBP/FOREXCOM:SPXUSD", title: "UK vs US", note: "FTSE 100 ÷ S&P 500, local currency" },
-  { symbol: "FOREXCOM:EUSTX50/FOREXCOM:SPXUSD", title: "Europe vs US", note: "Euro Stoxx 50 ÷ S&P 500, local currency" },
+  { symbol: "FOREXCOM:GRXEUR/FOREXCOM:SPXUSD", title: "Germany vs US", note: "DAX ÷ S&P 500, local currency" },
 ];

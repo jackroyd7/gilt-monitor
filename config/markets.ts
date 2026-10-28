@@ -27,10 +27,8 @@ export const MARKET_GROUPS: { title: string; symbols: MarketSymbol[]; more: Mark
     title: "Equity indices",
     symbols: [
       { symbol: "FOREXCOM:UKXGBP", name: "FTSE 100" },
-      { symbol: "FTSE:MCX", name: "FTSE 250" },
       { symbol: "FOREXCOM:SPXUSD", name: "S&P 500" },
       { symbol: "FOREXCOM:NSXUSD", name: "Nasdaq 100" },
-      { symbol: "FOREXCOM:EUSTX50", name: "Euro Stoxx 50" },
       { symbol: "FOREXCOM:GRXEUR", name: "DAX" },
       { symbol: "FOREXCOM:JP225", name: "Nikkei 225" },
     ],
