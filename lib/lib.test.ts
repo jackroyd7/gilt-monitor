@@ -1394,3 +1394,47 @@ test("Yahoo quote summary parses metrics, analysts and results", async () => {
   assert.equal(y.next?.date, "2026-12-23");
   assert.deepEqual(y.target, { mean: 80, analysts: 18 });
 });
+
+test("tips portfolio: weights respect stock and sector caps; cash left when ideas are few", async () => {
+  const { targetWeights } = await import("./tips");
+  const c = (symbol: string, sector: string, vol: number, conviction = 3) => ({ symbol, name: symbol, sector, price: 100, perPound: 100, vol, verdict: "include" as const, conviction });
+  const few = targetWeights([c("A", "Banks", 25), c("B", "Banks", 30), c("C", "Tech", 40)], { risk: "balanced", horizon: "1y" });
+  for (const v of Object.values(few)) assert.ok(v <= 0.1 + 1e-9);
+  assert.ok(Math.abs(Object.values(few).reduce((a, b) => a + b, 0) - 0.3) < 1e-9);
+  const many = targetWeights(
+    Array.from({ length: 14 }, (_, i) => c(`S${i}`, i < 6 ? "Banks" : `Other${i}`, 20 + i)),
+    { risk: "balanced", horizon: "1y" },
+  );
+  const banks = Object.entries(many).filter(([k]) => Number(k.slice(1)) < 6).reduce((a, [, v]) => a + v, 0);
+  assert.ok(banks <= 0.3 + 1e-9);
+  assert.ok(Math.abs(Object.values(many).reduce((a, b) => a + b, 0) - 0.95) < 1e-6);
+  // Very volatile names are left out when cautious.
+  assert.deepEqual(Object.keys(targetWeights([c("X", "Tech", 70)], { risk: "cautious", horizon: "1y" })), []);
+});
+
+test("tips portfolio: trades buy with cash, sell on stops, and apply to the book", async () => {
+  const { suggestTrades, applyTrades, stopFor, targetFor } = await import("./tips");
+  const settings = { risk: "balanced" as const, horizon: "1y" as const };
+  const cands = [
+    { symbol: "LSE:A", name: "A", sector: "Banks", price: 200, currency: "GBp", perPound: 100, vol: 25, verdict: "include" as const, conviction: 4, target: 260 },
+    { symbol: "NYSE:B", name: "B", sector: "Tech", price: 50, currency: "USD", perPound: 1.25, vol: 30, verdict: "include" as const, conviction: 3 },
+  ];
+  const book = { cash: 10000, holdings: [], trades: [], settings };
+  const w = { "LSE:A": 0.1, "NYSE:B": 0.1 };
+  const s = suggestTrades(book, cands, w, "2026-10-30");
+  assert.equal(s.length, 2);
+  const a = s.find((x) => x.symbol === "LSE:A")!;
+  assert.equal(a.shares, 500); // £1,000 at £2.00
+  const after = applyTrades(book, s, cands, "2026-10-30");
+  assert.ok(Math.abs(after.cash - (10000 - 1000 - 25 * 40)) < 1e-6);
+  const h = after.holdings.find((x) => x.symbol === "LSE:A")!;
+  assert.ok(h.stop! < 200 && h.stop! > 120);
+  assert.equal(h.reviewBy, "2027-10-30");
+  // Price falls through the stop: sell everything.
+  const fallen = cands.map((c) => (c.symbol === "LSE:A" ? { ...c, price: h.stop! - 1 } : c));
+  const s2 = suggestTrades(after, fallen, w, "2026-11-06");
+  assert.equal(s2.find((x) => x.symbol === "LSE:A")?.side, "sell");
+  assert.equal(s2.find((x) => x.symbol === "LSE:A")?.shares, 500);
+  assert.ok(stopFor(100, 80, settings) >= 65);
+  assert.equal(targetFor(100, 400, "6m"), 130);
+});

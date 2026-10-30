@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { connection } from "next/server";
 import EarningsCalendar from "@/components/EarningsCalendar";
 import EquitiesBoard from "@/components/EquitiesBoard";
@@ -13,26 +14,56 @@ export const metadata = { title: "Equities · Markets Monitor" };
 
 export default async function EquitiesPage() {
   await connection();
-  const [earnings, allNews, quotes] = await Promise.all([getEarnings(), getNews(), loadStockQuotes()]);
-  const news = allNews.items.filter((i) => i.topics.includes("equities")).slice(0, 12);
+  const [earnings, allNews, quotes] = await Promise.all([
+    getEarnings(),
+    getNews(),
+    loadStockQuotes(),
+  ]);
+  const news = allNews.items
+    .filter((i) => i.topics.includes("equities"))
+    .slice(0, 12);
   return (
     <>
       <PageHeader title="Equities">
-        UK, US and large-cap European stocks. Data from TradingView&apos;s embeddable widgets (some prices are delayed,
-        depending on the exchange).
+        UK, US and large-cap European stocks. Data from TradingView&apos;s
+        embeddable widgets (some prices are delayed, depending on the exchange).
       </PageHeader>
       <TickerTape />
       <div className="space-y-4">
         <GlobalStockSearch />
+        <Link
+          href="/equities/tips"
+          className="card flex items-center justify-between gap-3 p-4 hover:border-[color:var(--accent)]"
+        >
+          <span>
+            <span className="block text-sm font-semibold text-ink">
+              Tips portfolio
+            </span>
+            <span className="block text-xs text-muted">
+              Turn each week&apos;s share tips into a diversified portfolio, and
+              track how they do
+            </span>
+          </span>
+          <span className="text-accent" aria-hidden>
+            →
+          </span>
+        </Link>
         <MarketsBoard groups={["Equity indices"]} />
         <EquitiesBoard quotes={quotes} />
         <section className="card p-4">
-          <h2 className="mb-2 text-sm font-semibold text-ink">Earnings calendar</h2>
+          <h2 className="mb-2 text-sm font-semibold text-ink">
+            Earnings calendar
+          </h2>
           {earnings ? (
-            <EarningsCalendar events={earnings.events} today={new Date().toISOString().slice(0, 10)} error={earnings.error} />
+            <EarningsCalendar
+              events={earnings.events}
+              today={new Date().toISOString().slice(0, 10)}
+              error={earnings.error}
+            />
           ) : (
             <p className="text-sm text-muted">
-              Set <code>FINNHUB_API_KEY</code> in Vercel (free key from finnhub.io) to show upcoming results.
+              Set <code>FINNHUB_API_KEY</code> in Vercel (free key from
+              finnhub.io) to show upcoming results.
             </p>
           )}
         </section>
