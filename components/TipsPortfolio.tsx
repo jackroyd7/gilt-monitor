@@ -157,7 +157,7 @@ export default function TipsPortfolio({ shared }: { shared: boolean }) {
   const [perf, setPerf] = useState<Perf | null>(null);
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Load: this browser's copy, then the shared copy if it's newer.
+  // Load: this browser's copy, then the shared copy if it's newer (or share ours if it isn't).
   useEffect(() => {
     let local: State | null = null;
     try {
@@ -169,9 +169,19 @@ export default function TipsPortfolio({ shared }: { shared: boolean }) {
     if (!shared) return;
     fetch("/api/tips/state")
       .then((r) => r.json())
-      .then((d: { state?: State | null }) => {
+      .then((d: { state?: State | null; synced?: boolean }) => {
         if (d.state?.book && (!local || d.state.updatedAt > local.updatedAt))
           setState(d.state);
+        // This browser's copy is newer (e.g. built before shared storage was connected): upload it.
+        else if (
+          d.synced &&
+          local?.book &&
+          (!d.state || local.updatedAt > d.state.updatedAt)
+        )
+          fetch("/api/tips/state", {
+            method: "PUT",
+            body: JSON.stringify(local),
+          }).catch(() => {});
       })
       .catch(() => {});
   }, [shared]);
