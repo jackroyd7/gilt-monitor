@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Modal from "./Modal";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { Analysis, AnalysedStock } from "@/lib/tips-analyse";
 import type { ResolvedTip } from "@/lib/tips-ai";
@@ -10,6 +11,7 @@ import {
   adjustCash,
   applyTrades,
   editHolding,
+  removeHolding,
   HORIZON,
   holdingValue,
   RISK,
@@ -1176,6 +1178,7 @@ function HoldingsCard({
   const { book } = state;
   const [editing, setEditing] = useState<string | null>(null);
   const [adding, setAdding] = useState(false);
+  const [ask, setAsk] = useState<Confirm | null>(null);
   const rows = book.holdings.map((h) => {
     const p = perf?.prices[h.symbol];
     const value = holdingValue(h, p?.price, p?.perPound ?? undefined);
@@ -1332,13 +1335,36 @@ function HoldingsCard({
                         type="button"
                         disabled={!p}
                         onClick={() =>
-                          confirm(
-                            `Record selling all ${h.name} at ${price(p?.price, h.currency)}?`,
-                          ) && sellAll(h.symbol)
+                          setAsk({
+                            title: `Sell all ${h.name}?`,
+                            body: `This records a sale of ${h.shares.toLocaleString("en-GB")} shares at ${price(p?.price, h.currency)} (${gbp(value)}), adds the proceeds to cash and logs the trade.`,
+                            action: "Record sale",
+                            run: () => sellAll(h.symbol),
+                          })
                         }
-                        className="text-xs text-muted hover:text-ink disabled:opacity-40"
+                        className="mr-2 text-xs text-muted hover:text-ink disabled:opacity-40"
                       >
                         Sell
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setAsk({
+                            title: `Delete ${h.name}?`,
+                            body: `This removes the holding (${h.shares.toLocaleString("en-GB")} shares, ${gbp(value)}) from the portfolio without recording a sale. Cash and the trade history are unchanged. Use Sell instead if you have sold the shares. This can't be undone.`,
+                            action: "Delete holding",
+                            danger: true,
+                            run: () =>
+                              update((s) => ({
+                                ...s,
+                                book: removeHolding(s.book, h.symbol),
+                              })),
+                          })
+                        }
+                        className="text-xs text-muted hover:text-[color:var(--critical)]"
+                        aria-label={`Delete ${h.name}`}
+                      >
+                        Delete
                       </button>
                     </td>
                   </tr>
@@ -1393,21 +1419,77 @@ function HoldingsCard({
         <button
           type="button"
           onClick={() =>
-            confirm(
-              "Delete the portfolio and trade history? Your tips log is kept.",
-            ) &&
-            update((s) => ({
-              ...s,
-              book: { ...s.book, cash: 0, holdings: [], trades: [] },
-              analysis: undefined,
-            }))
+            setAsk({
+              title: "Delete the whole portfolio?",
+              body: "This removes every holding, the cash balance and the trade history. Your tips log is kept. This can't be undone.",
+              action: "Delete portfolio",
+              danger: true,
+              run: () =>
+                update((s) => ({
+                  ...s,
+                  book: { ...s.book, cash: 0, holdings: [], trades: [] },
+                  analysis: undefined,
+                })),
+            })
           }
           className="mt-1 text-[color:var(--critical)]"
         >
           Delete the portfolio and start again
         </button>
       </details>
+      {ask && <ConfirmDialog ask={ask} onClose={() => setAsk(null)} />}
     </section>
+  );
+}
+
+type Confirm = {
+  title: string;
+  body: string;
+  action: string;
+  danger?: boolean;
+  run: () => void;
+};
+
+/** Warning pop-up before a holding is sold, deleted or the portfolio reset. */
+function ConfirmDialog({
+  ask,
+  onClose,
+}: {
+  ask: Confirm;
+  onClose: () => void;
+}) {
+  return (
+    <Modal
+      title={ask.title}
+      onClose={onClose}
+      footer={
+        <div className="ml-auto flex gap-2">
+          <button
+            type="button"
+            onClick={onClose}
+            className="rounded-md border border-line px-3 py-1.5 text-sm text-ink-2 hover:text-ink"
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            autoFocus
+            onClick={() => {
+              ask.run();
+              onClose();
+            }}
+            className="rounded-md px-3 py-1.5 text-sm font-medium text-white"
+            style={{
+              background: ask.danger ? "var(--critical)" : "var(--accent)",
+            }}
+          >
+            {ask.action}
+          </button>
+        </div>
+      }
+    >
+      <p className="text-sm text-ink-2">{ask.body}</p>
+    </Modal>
   );
 }
 

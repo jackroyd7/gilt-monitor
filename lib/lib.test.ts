@@ -1534,3 +1534,43 @@ test("portfolio: holdings added by hand, edited, and cash moves", async () => {
   assert.equal(editHolding(b3, "LSE:VUSA", { shares: 0 }).holdings.length, 0);
   assert.equal(adjustCash(b3, -200).cash, 3000);
 });
+
+test("portfolio: a holding can be deleted without touching cash or the trade log", async () => {
+  const { addHolding, removeHolding } = await import("./tips");
+  const book = {
+    cash: 1000,
+    holdings: [],
+    trades: [],
+    settings: { risk: "balanced" as const, horizon: "1y" as const },
+  };
+  const b = addHolding(
+    addHolding(
+      book,
+      {
+        symbol: "A",
+        name: "A",
+        shares: 1,
+        cost: 100,
+        perPound: 1,
+        date: "2026-10-30",
+      },
+      true,
+    ),
+    {
+      symbol: "B",
+      name: "B",
+      shares: 1,
+      cost: 50,
+      perPound: 1,
+      date: "2026-10-30",
+    },
+    true,
+  );
+  const r = removeHolding(b, "A");
+  assert.deepEqual(
+    r.holdings.map((h) => h.symbol),
+    ["B"],
+  );
+  assert.equal(r.cash, b.cash);
+  assert.equal(r.trades.length, b.trades.length);
+});

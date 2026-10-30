@@ -613,3 +613,9 @@ export const adjustCash = (book: Book, amount: number): Book => ({
   ...book,
   cash: book.cash + amount,
 });
+
+/** Deletes a holding outright (e.g. one added by mistake): no sale is recorded and cash is unchanged. */
+export const removeHolding = (book: Book, symbol: string): Book => ({
+  ...book,
+  holdings: book.holdings.filter((h) => h.symbol !== symbol),
+});
