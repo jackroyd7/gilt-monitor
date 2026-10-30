@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { connection } from "next/server";
 import EarningsCalendar from "@/components/EarningsCalendar";
 import EquitiesBoard from "@/components/EquitiesBoard";
@@ -31,23 +30,6 @@ export default async function EquitiesPage() {
       <TickerTape />
       <div className="space-y-4">
         <GlobalStockSearch />
-        <Link
-          href="/equities/tips"
-          className="card flex items-center justify-between gap-3 p-4 hover:border-[color:var(--accent)]"
-        >
-          <span>
-            <span className="block text-sm font-semibold text-ink">
-              Tips portfolio
-            </span>
-            <span className="block text-xs text-muted">
-              Turn each week&apos;s share tips into a diversified portfolio, and
-              track how they do
-            </span>
-          </span>
-          <span className="text-accent" aria-hidden>
-            →
-          </span>
-        </Link>
         <MarketsBoard groups={["Equity indices"]} />
         <EquitiesBoard quotes={quotes} />
         <section className="card p-4">

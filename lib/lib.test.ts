@@ -1397,27 +1397,74 @@ test("Yahoo quote summary parses metrics, analysts and results", async () => {
 
 test("tips portfolio: weights respect stock and sector caps; cash left when ideas are few", async () => {
   const { targetWeights } = await import("./tips");
-  const c = (symbol: string, sector: string, vol: number, conviction = 3) => ({ symbol, name: symbol, sector, price: 100, perPound: 100, vol, verdict: "include" as const, conviction });
-  const few = targetWeights([c("A", "Banks", 25), c("B", "Banks", 30), c("C", "Tech", 40)], { risk: "balanced", horizon: "1y" });
-  for (const v of Object.values(few)) assert.ok(v <= 0.1 + 1e-9);
-  assert.ok(Math.abs(Object.values(few).reduce((a, b) => a + b, 0) - 0.3) < 1e-9);
-  const many = targetWeights(
-    Array.from({ length: 14 }, (_, i) => c(`S${i}`, i < 6 ? "Banks" : `Other${i}`, 20 + i)),
+  const c = (symbol: string, sector: string, vol: number, conviction = 3) => ({
+    symbol,
+    name: symbol,
+    sector,
+    price: 100,
+    perPound: 100,
+    vol,
+    verdict: "include" as const,
+    conviction,
+  });
+  const few = targetWeights(
+    [c("A", "Banks", 25), c("B", "Banks", 30), c("C", "Tech", 40)],
     { risk: "balanced", horizon: "1y" },
   );
-  const banks = Object.entries(many).filter(([k]) => Number(k.slice(1)) < 6).reduce((a, [, v]) => a + v, 0);
+  for (const v of Object.values(few)) assert.ok(v <= 0.1 + 1e-9);
+  assert.ok(
+    Math.abs(Object.values(few).reduce((a, b) => a + b, 0) - 0.3) < 1e-9,
+  );
+  const many = targetWeights(
+    Array.from({ length: 14 }, (_, i) =>
+      c(`S${i}`, i < 6 ? "Banks" : `Other${i}`, 20 + i),
+    ),
+    { risk: "balanced", horizon: "1y" },
+  );
+  const banks = Object.entries(many)
+    .filter(([k]) => Number(k.slice(1)) < 6)
+    .reduce((a, [, v]) => a + v, 0);
   assert.ok(banks <= 0.3 + 1e-9);
-  assert.ok(Math.abs(Object.values(many).reduce((a, b) => a + b, 0) - 0.95) < 1e-6);
+  assert.ok(
+    Math.abs(Object.values(many).reduce((a, b) => a + b, 0) - 0.95) < 1e-6,
+  );
   // Very volatile names are left out when cautious.
-  assert.deepEqual(Object.keys(targetWeights([c("X", "Tech", 70)], { risk: "cautious", horizon: "1y" })), []);
+  assert.deepEqual(
+    Object.keys(
+      targetWeights([c("X", "Tech", 70)], { risk: "cautious", horizon: "1y" }),
+    ),
+    [],
+  );
 });
 
 test("tips portfolio: trades buy with cash, sell on stops, and apply to the book", async () => {
-  const { suggestTrades, applyTrades, stopFor, targetFor } = await import("./tips");
+  const { suggestTrades, applyTrades, stopFor, targetFor } =
+    await import("./tips");
   const settings = { risk: "balanced" as const, horizon: "1y" as const };
   const cands = [
-    { symbol: "LSE:A", name: "A", sector: "Banks", price: 200, currency: "GBp", perPound: 100, vol: 25, verdict: "include" as const, conviction: 4, target: 260 },
-    { symbol: "NYSE:B", name: "B", sector: "Tech", price: 50, currency: "USD", perPound: 1.25, vol: 30, verdict: "include" as const, conviction: 3 },
+    {
+      symbol: "LSE:A",
+      name: "A",
+      sector: "Banks",
+      price: 200,
+      currency: "GBp",
+      perPound: 100,
+      vol: 25,
+      verdict: "include" as const,
+      conviction: 4,
+      target: 260,
+    },
+    {
+      symbol: "NYSE:B",
+      name: "B",
+      sector: "Tech",
+      price: 50,
+      currency: "USD",
+      perPound: 1.25,
+      vol: 30,
+      verdict: "include" as const,
+      conviction: 3,
+    },
   ];
   const book = { cash: 10000, holdings: [], trades: [], settings };
   const w = { "LSE:A": 0.1, "NYSE:B": 0.1 };
@@ -1431,10 +1478,59 @@ test("tips portfolio: trades buy with cash, sell on stops, and apply to the book
   assert.ok(h.stop! < 200 && h.stop! > 120);
   assert.equal(h.reviewBy, "2027-10-30");
   // Price falls through the stop: sell everything.
-  const fallen = cands.map((c) => (c.symbol === "LSE:A" ? { ...c, price: h.stop! - 1 } : c));
+  const fallen = cands.map((c) =>
+    c.symbol === "LSE:A" ? { ...c, price: h.stop! - 1 } : c,
+  );
   const s2 = suggestTrades(after, fallen, w, "2026-11-06");
   assert.equal(s2.find((x) => x.symbol === "LSE:A")?.side, "sell");
   assert.equal(s2.find((x) => x.symbol === "LSE:A")?.shares, 500);
   assert.ok(stopFor(100, 80, settings) >= 65);
   assert.equal(targetFor(100, 400, "6m"), 130);
+});
+
+test("portfolio: holdings added by hand, edited, and cash moves", async () => {
+  const { addHolding, editHolding, adjustCash } = await import("./tips");
+  const book = {
+    cash: 5000,
+    holdings: [],
+    trades: [],
+    settings: { risk: "balanced" as const, horizon: "1y" as const },
+  };
+  const b1 = addHolding(
+    book,
+    {
+      symbol: "LSE:VUSA",
+      name: "Vanguard S&P 500 ETF",
+      shares: 20,
+      cost: 9000,
+      currency: "GBp",
+      perPound: 100,
+      date: "2026-10-30",
+    },
+    true,
+  );
+  assert.equal(b1.cash, 5000 - 1800);
+  assert.equal(b1.holdings[0].reviewBy, "2027-10-30");
+  const b2 = addHolding(
+    b1,
+    {
+      symbol: "LSE:VUSA",
+      name: "Vanguard S&P 500 ETF",
+      shares: 20,
+      cost: 10000,
+      currency: "GBp",
+      perPound: 100,
+      date: "2026-11-06",
+    },
+    false,
+  );
+  assert.equal(b2.cash, 3200);
+  assert.equal(b2.holdings[0].shares, 40);
+  assert.equal(b2.holdings[0].cost, 9500);
+  assert.equal(b2.holdings[0].costGbp, 3800);
+  const b3 = editHolding(b2, "LSE:VUSA", { shares: 30, target: 11000 });
+  assert.equal(b3.holdings[0].costGbp, 2850);
+  assert.equal(b3.holdings[0].target, 11000);
+  assert.equal(editHolding(b3, "LSE:VUSA", { shares: 0 }).holdings.length, 0);
+  assert.equal(adjustCash(b3, -200).cash, 3000);
 });

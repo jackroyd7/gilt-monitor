@@ -70,7 +70,7 @@ export default async function PortfolioPage({ searchParams }: PageProps<"/gilts/
   if (!giltsYieldConfigured()) {
     return (
       <>
-        <PageHeader title="Portfolio">Connect your giltsyield.com account to see your holdings here.</PageHeader>
+        <PageHeader title="Gilt portfolio">Connect your giltsyield.com account to see your holdings here.</PageHeader>
         <Card title="Setup" exportable={false}>
           <ol className="list-decimal space-y-1 pl-5 text-sm text-ink-2">
             <li>Log in to giltsyield.com, open your Profile and copy your API key.</li>
@@ -89,7 +89,7 @@ export default async function PortfolioPage({ searchParams }: PageProps<"/gilts/
   if (!list.ok) {
     return (
       <>
-        <PageHeader title="Portfolio" />
+        <PageHeader title="Gilt portfolio" />
         <Card title="Couldn’t reach giltsyield.com" exportable={false}>
           <p className="text-sm text-ink-2">{list.error}</p>
         </Card>
@@ -101,7 +101,7 @@ export default async function PortfolioPage({ searchParams }: PageProps<"/gilts/
   const selected = portfolios.find((x) => x.id === p) ?? portfolios[0];
 
   if (!selected) {
-    return <PageHeader title="Portfolio">No portfolios found on your giltsyield.com account.</PageHeader>;
+    return <PageHeader title="Gilt portfolio">No portfolios found on your giltsyield.com account.</PageHeader>;
   }
 
   const [pl, book, flows, market] = await Promise.all([

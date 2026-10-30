@@ -136,7 +136,7 @@ async function resolve(t: ExtractedTip): Promise<ResolvedTip> {
   const byTicker = t.ticker ? await searchListings(t.ticker) : [];
   const pool = [...byTicker, ...byName].filter(
     (h, i, all) =>
-      all.findIndex((x) => x.symbol === h.symbol) === i && h.type !== "ETF",
+      all.findIndex((x) => x.symbol === h.symbol) === i && !h.type,
   );
   const tickerMatch = t.ticker
     ? pool.find(

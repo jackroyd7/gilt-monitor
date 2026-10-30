@@ -14,7 +14,7 @@ export const GILT_PAGES = [
   { href: "/gilts/boe", label: "BoE rate path" },
   { href: "/gilts/cross-market", label: "Cross-market" },
   { href: "/gilts/rv", label: "Relative value" },
-  { href: "/gilts/portfolio", label: "Portfolio" },
+  { href: "/gilts/portfolio", label: "Gilt portfolio" },
 ];
 
 const MARKET_TABS = [
@@ -135,6 +135,7 @@ export default function Nav() {
             {MARKET_TABS.map((t) => (
               <TopLink key={t.href} href={t.href} label={t.label} path={path} />
             ))}
+            <TopLink href="/my-portfolio" label="Portfolio" path={path} />
             <TopLink href="/charts" label="Charts" path={path} />
             <TopLink href="/news" label="News" path={path} />
           </div>
@@ -152,6 +153,7 @@ export default function Nav() {
         <BottomLink href="/" label="Overview" icon="◎" path={path} />
         <MenuTab label="Gilts" items={GILT_PAGES} active={inGilts} variant="bottom" />
         <MenuTab label="Markets" items={MARKET_TABS} active={inMarkets} variant="bottom" />
+        <BottomLink href="/my-portfolio" label="Portfolio" icon="◧" path={path} />
         <BottomLink href="/charts" label="Charts" icon="↗" path={path} />
         <BottomLink href="/news" label="News" icon="≡" path={path} />
       </nav>

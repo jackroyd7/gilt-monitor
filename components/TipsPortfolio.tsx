@@ -4,8 +4,12 @@ import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { Analysis, AnalysedStock } from "@/lib/tips-analyse";
 import type { ResolvedTip } from "@/lib/tips-ai";
+import { rangeStats } from "@/lib/price-tools";
 import {
+  addHolding,
+  adjustCash,
   applyTrades,
+  editHolding,
   HORIZON,
   holdingValue,
   RISK,
@@ -21,8 +25,9 @@ import {
   type Verdict,
 } from "@/lib/tips";
 
-// The tips portfolio: read a week's tips from screenshots, review them, build or adjust a
-// portfolio with share counts, and track how tips and holdings do. Saved in this browser,
+// The Portfolio tab: holdings you add yourself or from weekly share tips. Tips are read
+// from screenshots, reviewed, and turned into trades with share counts; holdings and tips
+// are tracked against the FTSE 100. Saved in this browser,
 // and across devices when Upstash Redis is connected.
 
 interface State {
@@ -228,6 +233,14 @@ export default function TipsPortfolio({ shared }: { shared: boolean }) {
         started={started}
         perf={perf}
       />
+      <HoldingsCard state={state} update={update} perf={perf} />
+      <div className="flex items-baseline gap-3 pt-2">
+        <h2 className="text-base font-semibold text-ink">Weekly tips</h2>
+        <span className="text-xs text-muted">
+          Read tips from screenshots, pick the sensible ones and turn them into
+          trades
+        </span>
+      </div>
       <UploadCard
         onSave={(tips) =>
           update((s) => {
@@ -247,7 +260,6 @@ export default function TipsPortfolio({ shared }: { shared: boolean }) {
         }
       />
       <ReviewCard state={state} update={update} started={started} />
-      <HoldingsCard state={state} update={update} perf={perf} />
       <TipLog state={state} update={update} perf={perf} />
       {!shared && (
         <p className="text-xs text-muted">
@@ -1152,7 +1164,8 @@ function HoldingsCard({
   perf: Perf | null;
 }) {
   const { book } = state;
-  if (!book.holdings.length && !book.trades.length) return null;
+  const [editing, setEditing] = useState<string | null>(null);
+  const [adding, setAdding] = useState(false);
   const rows = book.holdings.map((h) => {
     const p = perf?.prices[h.symbol];
     const value = holdingValue(h, p?.price, p?.perPound ?? undefined);
@@ -1176,7 +1189,33 @@ function HoldingsCard({
   };
   return (
     <section className="card p-4">
-      <h2 className="mb-2 text-sm font-semibold text-ink">3. Portfolio</h2>
+      <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+        <h2 className="text-sm font-semibold text-ink">Holdings</h2>
+        <div className="flex flex-wrap items-center gap-2">
+          <CashForm
+            onAdjust={(v) =>
+              update((s) => ({ ...s, book: adjustCash(s.book, v) }))
+            }
+          />
+          <button
+            type="button"
+            onClick={() => setAdding((a) => !a)}
+            className="rounded-md bg-[color:var(--accent)] px-3 py-1.5 text-sm font-medium text-white"
+          >
+            {adding ? "Close" : "+ Add a holding"}
+          </button>
+        </div>
+      </div>
+      {adding && (
+        <AddHolding
+          cash={book.cash}
+          settings={book.settings}
+          onAdd={(h, fromCash) => {
+            update((s) => ({ ...s, book: addHolding(s.book, h, fromCash) }));
+            setAdding(false);
+          }}
+        />
+      )}
       {rows.length ? (
         <div className="overflow-x-auto">
           <table className="num w-full text-sm">
@@ -1197,6 +1236,21 @@ function HoldingsCard({
             </thead>
             <tbody>
               {rows.map(({ h, p, value, pnl }) => {
+                if (editing === h.symbol)
+                  return (
+                    <EditRow
+                      key={h.symbol}
+                      h={h}
+                      onCancel={() => setEditing(null)}
+                      onSave={(patch) => {
+                        update((s) => ({
+                          ...s,
+                          book: editHolding(s.book, h.symbol, patch),
+                        }));
+                        setEditing(null);
+                      }}
+                    />
+                  );
                 const alert =
                   p && h.stop != null && p.price <= h.stop
                     ? "Below stop"
@@ -1256,7 +1310,14 @@ function HoldingsCard({
                     <td className="py-1.5 pr-2 text-right text-ink-2">
                       {h.reviewBy?.split("-").reverse().join("/")}
                     </td>
-                    <td className="py-1.5 text-right">
+                    <td className="py-1.5 text-right whitespace-nowrap">
+                      <button
+                        type="button"
+                        onClick={() => setEditing(h.symbol)}
+                        className="mr-2 text-xs text-muted hover:text-ink"
+                      >
+                        Edit
+                      </button>
                       <button
                         type="button"
                         disabled={!p}
@@ -1277,7 +1338,10 @@ function HoldingsCard({
           </table>
         </div>
       ) : (
-        <p className="text-sm text-muted">No holdings.</p>
+        <p className="text-sm text-muted">
+          No holdings yet. Add the shares, ETFs or funds you own, or build
+          positions from the weekly tips below.
+        </p>
       )}
       {book.trades.length > 0 && (
         <details className="mt-3 text-sm">
@@ -1334,6 +1398,402 @@ function HoldingsCard({
         </button>
       </details>
     </section>
+  );
+}
+
+/** Inline editor for a holding's shares, average cost, target and stop. */
+function EditRow({
+  h,
+  onSave,
+  onCancel,
+}: {
+  h: Book["holdings"][number];
+  onSave: (patch: {
+    shares?: number;
+    cost?: number;
+    target?: number | null;
+    stop?: number | null;
+  }) => void;
+  onCancel: () => void;
+}) {
+  const [shares, setShares] = useState(String(h.shares));
+  const [cost, setCost] = useState(String(h.cost));
+  const [target, setTarget] = useState(
+    h.target != null ? String(+h.target.toFixed(2)) : "",
+  );
+  const [stop, setStop] = useState(
+    h.stop != null ? String(+h.stop.toFixed(2)) : "",
+  );
+  const num = (v: string) =>
+    v.trim() === "" ? null : Number(v.replace(/,/g, ""));
+  const input = (value: string, set: (v: string) => void, label: string) => (
+    <input
+      value={value}
+      onChange={(e) => set(e.target.value)}
+      inputMode="decimal"
+      aria-label={label}
+      className="w-20 rounded border border-line bg-surface px-1 py-0.5 text-right text-sm text-ink"
+    />
+  );
+  return (
+    <tr className="border-t border-line bg-surface-2">
+      <td className="py-1.5 pr-2 text-left text-ink">{h.name}</td>
+      <td className="py-1.5 pr-2 text-right">
+        {input(shares, setShares, "Shares")}
+      </td>
+      <td className="py-1.5 pr-2 text-right">
+        {input(cost, setCost, "Average cost")}
+      </td>
+      <td colSpan={4} className="py-1.5 pr-2 text-right text-xs text-muted">
+        Cost per share in{" "}
+        {h.currency === "GBp" ? "pence" : (h.currency ?? "local currency")}
+      </td>
+      <td className="py-1.5 pr-2 text-right">
+        {input(target, setTarget, "Target")}
+      </td>
+      <td className="py-1.5 pr-2 text-right">{input(stop, setStop, "Stop")}</td>
+      <td colSpan={2} className="py-1.5 text-right whitespace-nowrap">
+        <button
+          type="button"
+          onClick={onCancel}
+          className="mr-2 text-xs text-muted hover:text-ink"
+        >
+          Cancel
+        </button>
+        <button
+          type="button"
+          onClick={() => {
+            const sh = num(shares);
+            const c = num(cost);
+            if (sh == null || !(sh >= 0) || c == null || !(c > 0)) return;
+            onSave({
+              shares: sh,
+              cost: c,
+              target: num(target),
+              stop: num(stop),
+            });
+          }}
+          className="rounded bg-[color:var(--accent)] px-2 py-0.5 text-xs font-medium text-white"
+        >
+          Save
+        </button>
+      </td>
+    </tr>
+  );
+}
+
+/** Pay cash into the portfolio or take it out. */
+function CashForm({ onAdjust }: { onAdjust: (amount: number) => void }) {
+  const [v, setV] = useState("");
+  const amount = Number(v.replace(/[£,\s]/g, ""));
+  const go = (sign: 1 | -1) => {
+    if (amount > 0) {
+      onAdjust(sign * amount);
+      setV("");
+    }
+  };
+  return (
+    <div className="flex items-center gap-1 text-xs text-muted">
+      Cash £
+      <input
+        value={v}
+        onChange={(e) => setV(e.target.value)}
+        inputMode="decimal"
+        placeholder="0"
+        aria-label="Cash amount"
+        className="w-20 rounded border border-line bg-surface px-1.5 py-1 text-sm text-ink"
+      />
+      <button
+        type="button"
+        onClick={() => go(1)}
+        className="rounded border border-line px-2 py-1 text-ink-2 hover:text-ink"
+      >
+        Pay in
+      </button>
+      <button
+        type="button"
+        onClick={() => go(-1)}
+        className="rounded border border-line px-2 py-1 text-ink-2 hover:text-ink"
+      >
+        Take out
+      </button>
+    </div>
+  );
+}
+
+type Quote = {
+  name?: string;
+  currency?: string;
+  price: number;
+  perPound: number | null;
+  vol?: number;
+};
+
+/** Add any share, ETF or fund you hold: search, then shares, price paid and date. */
+function AddHolding({
+  cash,
+  settings,
+  onAdd,
+}: {
+  cash: number;
+  settings: Book["settings"];
+  onAdd: (h: Parameters<typeof addHolding>[1], fromCash: boolean) => void;
+}) {
+  const [q, setQ] = useState("");
+  const [hits, setHits] = useState<
+    {
+      symbol: string;
+      name: string;
+      ticker: string;
+      market?: string;
+      type?: string;
+    }[]
+  >([]);
+  const [pick, setPick] = useState<{ symbol: string; name: string } | null>(
+    null,
+  );
+  const [quote, setQuote] = useState<Quote | null>(null);
+  const [error, setError] = useState<string>();
+  const [shares, setShares] = useState("");
+  const [cost, setCost] = useState("");
+  const [date, setDate] = useState(today());
+  const [target, setTarget] = useState("");
+  const [stop, setStop] = useState("");
+  const [fromCash, setFromCash] = useState(cash > 0);
+
+  useEffect(() => {
+    if (pick || q.trim().length < 2) return;
+    const ctl = new AbortController();
+    const t = setTimeout(() => {
+      fetch(`/api/search?q=${encodeURIComponent(q.trim())}`, {
+        signal: ctl.signal,
+      })
+        .then((r) => r.json())
+        .then((d) => setHits(d.results ?? []))
+        .catch(() => {});
+    }, 250);
+    return () => {
+      clearTimeout(t);
+      ctl.abort();
+    };
+  }, [q, pick]);
+
+  const choose = (h: { symbol: string; name: string }) => {
+    setPick(h);
+    setQuote(null);
+    setError(undefined);
+    fetch(`/api/prices?symbol=${encodeURIComponent(h.symbol)}`)
+      .then((r) => r.json())
+      .then(
+        (d: {
+          error?: string;
+          name?: string;
+          currency?: string;
+          price?: number;
+          perPound?: number | null;
+          points?: [string, number][];
+        }) => {
+          if (d.error || d.price == null)
+            throw new Error(d.error ?? "No price");
+          const vol = rangeStats((d.points ?? []).slice(-252))?.vol;
+          setQuote({
+            name: d.name,
+            currency: d.currency,
+            price: d.price,
+            perPound: d.perPound ?? null,
+            vol,
+          });
+          setCost(String(+d.price.toFixed(4)));
+        },
+      )
+      .catch((e: Error) =>
+        setError(
+          `${e.message}. You can still add it at the price you paid if we can't value it.`,
+        ),
+      );
+  };
+
+  const sh = Number(shares.replace(/,/g, ""));
+  const c = Number(cost.replace(/,/g, ""));
+  const perPound = quote?.perPound ?? (quote?.currency === "GBp" ? 100 : null);
+  const costGbp = perPound && sh > 0 && c > 0 ? (sh * c) / perPound : null;
+  const unit = quote?.currency === "GBp" ? "pence" : (quote?.currency ?? "");
+
+  return (
+    <div className="mb-4 rounded-md border border-line p-3">
+      {!pick ? (
+        <div>
+          <input
+            autoFocus
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+            placeholder="Search a share, ETF or fund by name or ticker"
+            className="w-full rounded-md border border-line bg-surface px-3 py-2 text-sm text-ink"
+            aria-label="Search for a security"
+          />
+          {q.trim().length >= 2 && (
+            <ul className="mt-1 max-h-64 overflow-auto">
+              {hits.map((h) => (
+                <li key={h.symbol}>
+                  <button
+                    type="button"
+                    onClick={() => choose(h)}
+                    className="flex w-full items-baseline gap-3 rounded px-2 py-1.5 text-left text-sm hover:bg-surface-2"
+                  >
+                    <span className="min-w-0 flex-1 truncate text-ink">
+                      {h.name}
+                    </span>
+                    {h.type && (
+                      <span className="rounded bg-surface-2 px-1 text-[10px] text-muted">
+                        {h.type}
+                      </span>
+                    )}
+                    <span className="text-xs text-muted">{h.market}</span>
+                    <span className="num w-24 shrink-0 text-right text-xs text-ink-2">
+                      {h.ticker}
+                    </span>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      ) : (
+        <form
+          className="space-y-3"
+          onSubmit={(e) => {
+            e.preventDefault();
+            if (!(sh > 0) || !(c > 0) || !perPound) return;
+            const t = Number(target.replace(/,/g, ""));
+            const st = Number(stop.replace(/,/g, ""));
+            onAdd(
+              {
+                symbol: pick.symbol,
+                name: pick.name,
+                shares: sh,
+                cost: c,
+                currency: quote?.currency,
+                perPound,
+                date,
+                target: t > 0 ? t : undefined,
+                stop:
+                  st > 0
+                    ? st
+                    : quote
+                      ? stopFor(c, quote.vol, settings)
+                      : undefined,
+              },
+              fromCash,
+            );
+          }}
+        >
+          <div className="flex flex-wrap items-baseline justify-between gap-2">
+            <div>
+              <span className="text-sm font-medium text-ink">{pick.name}</span>{" "}
+              <span className="text-xs text-muted">{pick.symbol}</span>
+              {quote && (
+                <span className="num ml-2 text-xs text-ink-2">
+                  now {price(quote.price, quote.currency)}
+                </span>
+              )}
+            </div>
+            <button
+              type="button"
+              onClick={() => setPick(null)}
+              className="text-xs text-accent"
+            >
+              Change
+            </button>
+          </div>
+          {error && (
+            <p className="text-xs" style={{ color: "var(--warning)" }}>
+              {error}
+            </p>
+          )}
+          <div className="flex flex-wrap gap-3 text-xs text-muted">
+            <label>
+              Shares / units
+              <input
+                value={shares}
+                onChange={(e) => setShares(e.target.value)}
+                inputMode="decimal"
+                required
+                className="mt-1 block w-28 rounded border border-line bg-surface px-2 py-1 text-sm text-ink"
+              />
+            </label>
+            <label>
+              Price paid{unit ? ` (${unit})` : ""}
+              <input
+                value={cost}
+                onChange={(e) => setCost(e.target.value)}
+                inputMode="decimal"
+                required
+                className="mt-1 block w-28 rounded border border-line bg-surface px-2 py-1 text-sm text-ink"
+              />
+            </label>
+            <label>
+              Date bought
+              <input
+                type="date"
+                value={date}
+                max={today()}
+                onChange={(e) => setDate(e.target.value)}
+                className="mt-1 block rounded border border-line bg-surface px-2 py-1 text-sm text-ink"
+              />
+            </label>
+            <label>
+              Target (optional)
+              <input
+                value={target}
+                onChange={(e) => setTarget(e.target.value)}
+                inputMode="decimal"
+                className="mt-1 block w-24 rounded border border-line bg-surface px-2 py-1 text-sm text-ink"
+              />
+            </label>
+            <label>
+              Stop (optional)
+              <input
+                value={stop}
+                onChange={(e) => setStop(e.target.value)}
+                inputMode="decimal"
+                placeholder="auto"
+                className="mt-1 block w-24 rounded border border-line bg-surface px-2 py-1 text-sm text-ink"
+              />
+            </label>
+          </div>
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <label className="flex items-center gap-2 text-xs text-ink-2">
+              <input
+                type="checkbox"
+                checked={fromCash}
+                onChange={(e) => setFromCash(e.target.checked)}
+              />
+              Pay from the portfolio&apos;s cash ({gbp(cash)} available)
+            </label>
+            <div className="flex items-center gap-3">
+              {costGbp != null && (
+                <span className="num text-sm text-ink">
+                  Cost {gbp(costGbp)}
+                </span>
+              )}
+              <button
+                type="submit"
+                disabled={!costGbp}
+                className="rounded-md bg-[color:var(--accent)] px-3 py-1.5 text-sm font-medium text-white disabled:opacity-50"
+              >
+                Add holding
+              </button>
+            </div>
+          </div>
+          {!perPound && quote && (
+            <p className="text-xs" style={{ color: "var(--warning)" }}>
+              Couldn&apos;t get the exchange rate for {quote.currency}; try
+              again shortly.
+            </p>
+          )}
+        </form>
+      )}
+    </div>
   );
 }
 

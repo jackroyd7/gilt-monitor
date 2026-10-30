@@ -21,7 +21,8 @@ export interface SearchHit {
 
 // Listing search shared by the Equities search box and the tips reader.
 const UA = "Mozilla/5.0 (compatible; gilt-monitor)";
-const TYPES = new Set(["EQUITY", "ETF"]);
+// Shares, ETFs and funds (Yahoo lists UK unit trusts and OEICs as MUTUALFUND).
+const TYPES = new Set(["EQUITY", "ETF", "MUTUALFUND"]);
 
 async function yahooSearch(q: string): Promise<SearchHit[] | null> {
   try {
@@ -49,7 +50,7 @@ async function yahooSearch(q: string): Promise<SearchHit[] | null> {
           ticker,
           market:
             typeof x.exchDisp === "string" ? x.exchDisp : marketName(symbol),
-          type: x.quoteType === "ETF" ? "ETF" : undefined,
+          type: x.quoteType === "ETF" ? "ETF" : x.quoteType === "MUTUALFUND" ? "Fund" : undefined,
         },
       ];
     });

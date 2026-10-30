@@ -505,3 +505,111 @@ export function correlation(
   }
   return va && vb ? cov / Math.sqrt(va * vb) : null;
 }
+
+export const horizonMonths = (h: Horizon) =>
+  h === "6m" ? 6 : h === "1y" ? 12 : 36;
+
+/**
+ * Adds a holding you bought yourself (any share, ETF or fund). With `fromCash` the cost
+ * comes out of the portfolio's cash; otherwise it's new money brought in with the shares.
+ */
+export function addHolding(
+  book: Book,
+  h: {
+    symbol: string;
+    name: string;
+    shares: number;
+    cost: number;
+    currency?: string;
+    perPound: number;
+    date: string;
+    target?: number;
+    stop?: number;
+    sector?: string;
+  },
+  fromCash: boolean,
+): Book {
+  const costGbp = (h.shares * h.cost) / h.perPound;
+  const holdings = book.holdings.map((x) => ({ ...x }));
+  const existing = holdings.find((x) => x.symbol === h.symbol);
+  if (existing) {
+    existing.cost =
+      (existing.cost * existing.shares + h.cost * h.shares) /
+      (existing.shares + h.shares);
+    existing.shares += h.shares;
+    existing.costGbp += costGbp;
+    existing.target = h.target ?? existing.target;
+    existing.stop = h.stop ?? existing.stop;
+  } else {
+    holdings.push({
+      symbol: h.symbol,
+      name: h.name,
+      shares: h.shares,
+      cost: h.cost,
+      currency: h.currency,
+      costGbp,
+      boughtAt: h.date,
+      target: h.target,
+      stop: h.stop,
+      reviewBy: addMonths(h.date, horizonMonths(book.settings.horizon)),
+      sector: h.sector,
+    });
+  }
+  const trade: Trade = {
+    date: h.date,
+    symbol: h.symbol,
+    name: h.name,
+    side: "buy",
+    shares: h.shares,
+    price: h.cost,
+    currency: h.currency,
+    gbp: costGbp,
+    reason: "Added by hand.",
+  };
+  return {
+    ...book,
+    cash: fromCash ? book.cash - costGbp : book.cash,
+    holdings,
+    trades: [...book.trades, trade],
+  };
+}
+
+/** Corrects a holding's shares, average cost, target or stop (e.g. to match the prices you actually dealt at). */
+export function editHolding(
+  book: Book,
+  symbol: string,
+  patch: {
+    shares?: number;
+    cost?: number;
+    target?: number | null;
+    stop?: number | null;
+  },
+): Book {
+  return {
+    ...book,
+    holdings: book.holdings
+      .map((h) => {
+        if (h.symbol !== symbol) return h;
+        const shares = patch.shares ?? h.shares;
+        const cost = patch.cost ?? h.cost;
+        const scale =
+          h.shares && h.cost ? (shares * cost) / (h.shares * h.cost) : 1;
+        return {
+          ...h,
+          shares,
+          cost,
+          costGbp: h.costGbp * scale,
+          target:
+            patch.target === null ? undefined : (patch.target ?? h.target),
+          stop: patch.stop === null ? undefined : (patch.stop ?? h.stop),
+        };
+      })
+      .filter((h) => h.shares > 0),
+  };
+}
+
+/** Pays cash in (positive) or takes it out (negative). */
+export const adjustCash = (book: Book, amount: number): Book => ({
+  ...book,
+  cash: book.cash + amount,
+});
