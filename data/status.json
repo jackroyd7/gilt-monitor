@@ -1,73 +1,73 @@
 {
-  "updatedAt": "2026-10-29T23:17:58.961Z",
+  "updatedAt": "2026-10-30T14:07:49.014Z",
   "sources": {
     "boe": {
       "ok": true,
-      "checkedAt": "2026-10-29T23:17:58.961Z",
-      "latestDate": "2026-10-28",
+      "checkedAt": "2026-10-30T14:07:49.014Z",
+      "latestDate": "2026-10-29",
       "message": "uk_inflation, uk_nominal, uk_real, uk_ois_fwd, uk_ois"
     },
     "bundesbank": {
       "ok": true,
-      "checkedAt": "2026-10-29T23:17:58.961Z",
-      "latestDate": "2026-10-29"
+      "checkedAt": "2026-10-30T14:07:49.014Z",
+      "latestDate": "2026-10-30"
     },
     "ust": {
       "ok": true,
-      "checkedAt": "2026-10-29T23:17:58.961Z",
+      "checkedAt": "2026-10-30T14:07:49.014Z",
       "latestDate": "2026-10-29"
     },
     "dmo": {
       "ok": true,
-      "checkedAt": "2026-10-29T23:17:58.961Z",
-      "latestDate": "2026-10-29",
+      "checkedAt": "2026-10-30T14:07:49.014Z",
+      "latestDate": "2026-10-30",
       "message": "102 gilts, 0 with yields; prices unavailable: https://www.dmo.gov.uk/data/XmlDataReport?reportCode=D10B: no usable rows"
     },
     "gilt_history": {
       "ok": true,
-      "checkedAt": "2026-10-29T23:17:58.961Z",
+      "checkedAt": "2026-10-30T14:07:49.014Z",
       "latestDate": "2026-10-29",
-      "message": "giltsyield price time 2026-10-29 14:05; giltsyield 2026-10-29: 102 gilts"
+      "message": "giltsyield price time 2026-10-30 14:06; prices are intraday; close not recorded yet"
     },
     "boe_fx": {
       "ok": true,
-      "checkedAt": "2026-10-29T23:17:58.961Z",
-      "latestDate": "2026-10-28"
+      "checkedAt": "2026-10-30T14:07:49.014Z",
+      "latestDate": "2026-10-29"
     },
     "cftc": {
       "ok": true,
-      "checkedAt": "2026-10-29T23:17:58.961Z",
+      "checkedAt": "2026-10-30T14:07:49.014Z",
       "latestDate": "2026-10-20",
       "message": "CHF, GBP, JPY, EUR"
     },
     "macro": {
       "ok": true,
-      "checkedAt": "2026-10-29T23:17:58.961Z",
+      "checkedAt": "2026-10-30T14:07:49.014Z",
       "latestDate": "2026-10-01",
       "message": "37 series"
     },
     "commodities": {
       "ok": true,
-      "checkedAt": "2026-10-29T23:17:58.961Z",
-      "latestDate": "2026-10-29",
+      "checkedAt": "2026-10-30T14:07:49.014Z",
+      "latestDate": "2026-10-30",
       "message": "4 prices, 8 positioning"
     },
     "boe_policy": {
       "ok": true,
-      "checkedAt": "2026-10-29T23:17:58.961Z",
-      "latestDate": "2026-10-28",
+      "checkedAt": "2026-10-30T14:07:49.014Z",
+      "latestDate": "2026-10-29",
       "message": "10 upcoming MPC dates (next 2026-11-05)"
     },
     "rates": {
       "ok": true,
-      "checkedAt": "2026-10-29T23:17:58.961Z",
-      "latestDate": "2026-10-29",
+      "checkedAt": "2026-10-30T14:07:49.014Z",
+      "latestDate": "2026-10-30",
       "message": "14 series"
     },
     "stocks": {
       "ok": true,
-      "checkedAt": "2026-10-29T23:17:58.961Z",
-      "latestDate": "2026-10-29",
+      "checkedAt": "2026-10-30T14:07:49.014Z",
+      "latestDate": "2026-10-30",
       "message": "346/353 UK, European and Asian stocks, sector ETFs and commodity futures"
     }
   }
