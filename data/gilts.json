@@ -1,5 +1,5 @@
 {
- "asOf": "2026-10-30",
+ "asOf": "2026-11-02",
  "source": "UK Debt Management Office",
  "gilts": [
   {
@@ -245,7 +245,7 @@
    "cleanPrice": null,
    "dirtyPrice": null,
    "yield": null,
-   "amountInIssue": 42587.911
+   "amountInIssue": 43587.911
   },
   {
    "isin": "GB00BNNGP551",
