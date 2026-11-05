@@ -14,6 +14,7 @@ import {
   YAxis,
 } from "recharts";
 import { AXIS_TICK, fmtDate, toX } from "./charts";
+import { ExpandButton, ExpandedChart } from "./ChartExpand";
 import SymbolPicker from "./SymbolPicker";
 import {
   alignTo,
@@ -78,12 +79,15 @@ export default function PriceTool({
   name,
   unit = "",
   height = 380,
+  expandable = true,
 }: {
   points: Pt[];
   name: string;
   unit?: string;
   height?: number;
+  expandable?: boolean;
 }) {
+  const [expanded, setExpanded] = useState(false);
   const last = points.at(-1)?.[0] ?? "";
   const [range, setRange] = useState("1Y");
   const [from, setFrom] = useState("");
@@ -305,7 +309,27 @@ export default function PriceTool({
         >
           + Compare
         </button>
+        {expandable && (
+          <ExpandButton onClick={() => setExpanded(true)} className="ml-auto" />
+        )}
       </div>
+      {expanded && (
+        // Its own copy of the tools: ranges, averages and measures start afresh full screen.
+        <ExpandedChart
+          title={name}
+          onClose={() => setExpanded(false)}
+          reserve={250}
+          render={(h) => (
+            <PriceTool
+              points={points}
+              name={name}
+              unit={unit}
+              height={h}
+              expandable={false}
+            />
+          )}
+        />
+      )}
 
       {/* Legend for comparisons and averages */}
       {(compares.length > 0 || mas.size > 0) && (

@@ -1,6 +1,9 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { createContext, useEffect, useRef } from "react";
+
+/** True inside a full-screen pop-up, so charts there don't offer to expand again. */
+export const FullScreenContext = createContext(false);
 
 /** Centred popup over a dimmed page. Closes on Esc, the ✕ button, or a click outside. */
 export default function Modal({
@@ -30,12 +33,14 @@ export default function Modal({
   }, [onClose]);
 
   useEffect(() => {
-    const onKey = (e: KeyboardEvent) => e.key === "Escape" && closeRef.current();
+    const onKey = (e: KeyboardEvent) =>
+      e.key === "Escape" && closeRef.current();
     document.addEventListener("keydown", onKey);
     const overflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
     // Focus the dialog for keyboard use, unless something inside it (e.g. a search box) took focus.
-    if (!panel.current?.contains(document.activeElement)) panel.current?.focus();
+    if (!panel.current?.contains(document.activeElement))
+      panel.current?.focus();
     return () => {
       document.removeEventListener("keydown", onKey);
       document.body.style.overflow = overflow;
@@ -44,7 +49,7 @@ export default function Modal({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-2 sm:p-6"
+      className={`fixed inset-0 z-50 flex items-center justify-center bg-black/50 ${size === "full" ? "modal-full-overlay p-6" : "p-2 sm:p-6"}`}
       onMouseDown={(e) => e.target === e.currentTarget && closeRef.current()}
     >
       <div
@@ -53,20 +58,55 @@ export default function Modal({
         aria-modal="true"
         tabIndex={-1}
         className={`card flex max-h-full w-full flex-col shadow-2xl outline-none ${
-          size === "full" ? "h-[92vh] max-w-[1400px]" : wide ? "max-w-6xl" : "max-w-3xl"
+          size === "full"
+            ? // Phones: the whole screen (clear of the notch in landscape); larger screens: a big panel.
+              "modal-full h-[92vh] max-w-[1400px]"
+            : wide
+              ? "max-w-6xl"
+              : "max-w-3xl"
         }`}
+        style={
+          size === "full"
+            ? {
+                paddingTop: "env(safe-area-inset-top)",
+                paddingBottom: "env(safe-area-inset-bottom)",
+                paddingLeft: "env(safe-area-inset-left)",
+                paddingRight: "env(safe-area-inset-right)",
+              }
+            : undefined
+        }
       >
         <div className="flex items-start gap-3 border-b border-line px-4 py-3 sm:px-5">
           <div className="min-w-0 flex-1">
             <h2 className="text-base font-semibold text-ink">{title}</h2>
-            {subtitle && <div className="mt-0.5 text-xs text-muted">{subtitle}</div>}
+            {subtitle && (
+              <div className="mt-0.5 text-xs text-muted">{subtitle}</div>
+            )}
           </div>
-          <button onClick={onClose} aria-label="Close" className="rounded-md px-2 py-1 text-ink-2 hover:bg-surface-2 hover:text-ink">
+          <button
+            onClick={onClose}
+            aria-label="Close"
+            className="rounded-md px-2 py-1 text-ink-2 hover:bg-surface-2 hover:text-ink"
+          >
             ✕
           </button>
         </div>
-        <div className={`min-h-0 flex-1 overflow-y-auto ${size === "full" ? "p-2" : "px-4 py-4 sm:px-5"}`}>{children}</div>
-        {footer && <div className="flex flex-wrap items-center gap-2 border-t border-line px-4 py-3 sm:px-5">{footer}</div>}
+        <div
+          className={`min-h-0 flex-1 overflow-y-auto ${size === "full" ? "p-2" : "px-4 py-4 sm:px-5"}`}
+        >
+          {size === "full" ? (
+            <FullScreenContext.Provider value>
+              {children}
+            </FullScreenContext.Provider>
+          ) : (
+            children
+          )}
+        </div>
+        {footer && (
+          <div className="flex flex-wrap items-center gap-2 border-t border-line px-4 py-3 sm:px-5">
+            {footer}
+          </div>
+        )}
       </div>
     </div>
   );

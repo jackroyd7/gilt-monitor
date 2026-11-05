@@ -18,7 +18,10 @@ import {
   RangePicker,
   RANGES,
   SeriesChart,
-  toX, useHiddenSeries } from "./charts";
+  toX,
+  useHiddenSeries,
+} from "./charts";
+import { ExpandButton, ExpandedChart } from "./ChartExpand";
 import Modal from "./Modal";
 import { Card } from "./Tiles";
 
@@ -153,6 +156,7 @@ export interface RatesFxPair {
 export function RatesVsFx({ pairs }: { pairs: RatesFxPair[] }) {
   const [id, setId] = useState(pairs[0]?.id);
   const [range, setRange] = useState("1Y");
+  const [expanded, setExpanded] = useState(false);
   const p = pairs.find((x) => x.id === id) ?? pairs[0];
   const data = useMemo(() => {
     if (!p) return [];
@@ -172,6 +176,88 @@ export function RatesVsFx({ pairs }: { pairs: RatesFxPair[] }) {
   const { hidden, toggle } = useHiddenSeries(["fx", "spread"]);
   if (!p) return null;
   const lastCorr = p.corr[p.corr.length - 1]?.[1];
+  const chart = (h: number) => (
+    <div style={{ height: h }} className="mt-2 w-full">
+      <ResponsiveContainer width="100%" height="100%">
+        <LineChart
+          data={data}
+          margin={{ top: 8, right: 4, bottom: 0, left: 0 }}
+        >
+          <CartesianGrid vertical={false} />
+          <XAxis
+            dataKey="x"
+            type="number"
+            domain={["dataMin", "dataMax"]}
+            tick={AXIS_TICK}
+            tickFormatter={fmtDate}
+            minTickGap={24}
+          />
+          <YAxis
+            yAxisId="fx"
+            tick={AXIS_TICK}
+            width={52}
+            domain={["auto", "auto"]}
+            tickFormatter={(v: number) => v.toFixed(3)}
+          />
+          <YAxis
+            yAxisId="spread"
+            orientation="right"
+            tick={AXIS_TICK}
+            width={44}
+            domain={["auto", "auto"]}
+            tickFormatter={(v: number) => v.toFixed(0)}
+          />
+          <Tooltip
+            labelFormatter={(v) => fmtDate(Number(v))}
+            formatter={(v, k) =>
+              k === "fx"
+                ? [Number(v).toFixed(4), p.fxName]
+                : [`${Number(v).toFixed(1)}bp`, p.spreadName]
+            }
+            contentStyle={{
+              background: "var(--surface)",
+              border: "1px solid var(--border)",
+              fontSize: 12,
+            }}
+          />
+          <Line
+            yAxisId="fx"
+            dataKey="fx"
+            hide={hidden.has("fx")}
+            stroke="var(--series-1)"
+            strokeWidth={2}
+            dot={false}
+            connectNulls
+            isAnimationActive={false}
+          />
+          <Line
+            yAxisId="spread"
+            dataKey="spread"
+            hide={hidden.has("spread")}
+            stroke="var(--series-2)"
+            strokeWidth={2}
+            dot={false}
+            connectNulls
+            isAnimationActive={false}
+          />
+        </LineChart>
+      </ResponsiveContainer>
+    </div>
+  );
+  const legend = (
+    <Legend
+      series={[
+        { key: "fx", name: `${p.fxName} (left)`, color: "var(--series-1)" },
+        {
+          key: "spread",
+          name: `${p.spreadName}, bp (right)`,
+          color: "var(--series-2)",
+        },
+      ]}
+      hidden={hidden}
+      onToggle={toggle}
+    />
+  );
 
   return (
     <Card
@@ -204,88 +290,28 @@ export function RatesVsFx({ pairs }: { pairs: RatesFxPair[] }) {
           <RangePicker value={range} onChange={setRange} />
         </div>
       </div>
-      <Legend
-        series={[
-          { key: "fx", name: `${p.fxName} (left)`, color: "var(--series-1)" },
-          {
-            key: "spread",
-            name: `${p.spreadName}, bp (right)`,
-            color: "var(--series-2)",
-          },
-        ]}
-        hidden={hidden}
-        onToggle={toggle}
-      />
-      <div style={{ height: 300 }} className="mt-2 w-full">
-        <ResponsiveContainer width="100%" height="100%">
-          <LineChart
-            data={data}
-            margin={{ top: 8, right: 4, bottom: 0, left: 0 }}
-          >
-            <CartesianGrid vertical={false} />
-            <XAxis
-              dataKey="x"
-              type="number"
-              domain={["dataMin", "dataMax"]}
-              tick={AXIS_TICK}
-              tickFormatter={fmtDate}
-              minTickGap={24}
-            />
-            <YAxis
-              yAxisId="fx"
-              tick={AXIS_TICK}
-              width={52}
-              domain={["auto", "auto"]}
-              tickFormatter={(v: number) => v.toFixed(3)}
-            />
-            <YAxis
-              yAxisId="spread"
-              orientation="right"
-              tick={AXIS_TICK}
-              width={44}
-              domain={["auto", "auto"]}
-              tickFormatter={(v: number) => v.toFixed(0)}
-            />
-            <Tooltip
-              labelFormatter={(v) => fmtDate(Number(v))}
-              formatter={(v, k) =>
-                k === "fx"
-                  ? [Number(v).toFixed(4), p.fxName]
-                  : [`${Number(v).toFixed(1)}bp`, p.spreadName]
-              }
-              contentStyle={{
-                background: "var(--surface)",
-                border: "1px solid var(--border)",
-                fontSize: 12,
-              }}
-            />
-            <Line
-              yAxisId="fx"
-              dataKey="fx"
-              hide={hidden.has("fx")}
-              stroke="var(--series-1)"
-              strokeWidth={2}
-              dot={false}
-              connectNulls
-              isAnimationActive={false}
-            />
-            <Line
-              yAxisId="spread"
-              dataKey="spread"
-              hide={hidden.has("spread")}
-              stroke="var(--series-2)"
-              strokeWidth={2}
-              dot={false}
-              connectNulls
-              isAnimationActive={false}
-            />
-          </LineChart>
-        </ResponsiveContainer>
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        {legend}
+        <ExpandButton onClick={() => setExpanded(true)} className="ml-auto" />
       </div>
+      {expanded && (
+        <ExpandedChart
+          title={`Rates vs FX: ${p.title}`}
+          onClose={() => setExpanded(false)}
+          render={(h) => (
+            <>
+              {legend}
+              {chart(h)}
+            </>
+          )}
+        />
+      )}
+      {chart(300)}
       <p className="mt-2 text-xs leading-relaxed text-ink-2">
-        When UK yields rise relative to US or German yields, sterling usually strengthens. The lines moving together
-        means rates are driving the currency; when they split, something else (risk appetite, politics, growth fears)
-        is in charge.
+        When UK yields rise relative to US or German yields, sterling usually
+        strengthens. The lines moving together means rates are driving the
+        currency; when they split, something else (risk appetite, politics,
+        growth fears) is in charge.
       </p>
       <div className="mt-4">
         <h3 className="mb-1 text-xs font-medium text-ink-2">
@@ -353,8 +379,13 @@ export function Positioning({
   return (
     <Card title={title} subtitle={`${subtitle} Latest ${r.date ?? "–"}.`}>
       {explainer && (
-        <details className="mb-3 rounded-md bg-surface-2/60 px-3 py-2 text-xs text-ink-2" data-export-ignore>
-          <summary className="cursor-pointer font-medium text-ink">What this shows</summary>
+        <details
+          className="mb-3 rounded-md bg-surface-2/60 px-3 py-2 text-xs text-ink-2"
+          data-export-ignore
+        >
+          <summary className="cursor-pointer font-medium text-ink">
+            What this shows
+          </summary>
           <div className="mt-2 space-y-1.5 leading-relaxed">{explainer}</div>
         </details>
       )}

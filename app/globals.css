@@ -104,6 +104,18 @@ body {
   border-radius: 10px;
 }
 
+/* Full-screen pop-ups (expanded charts) take the whole screen on phones, upright or sideways. */
+@media (max-width: 639px), (max-height: 500px) {
+  .modal-full-overlay {
+    padding: 0;
+  }
+  .modal-full {
+    height: 100dvh;
+    border: 0;
+    border-radius: 0;
+  }
+}
+
 .recharts-cartesian-grid line {
   stroke: var(--grid);
 }
