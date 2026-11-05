@@ -1,73 +1,73 @@
 {
-  "updatedAt": "2026-11-04T15:27:04.834Z",
+  "updatedAt": "2026-11-05T00:23:25.076Z",
   "sources": {
     "boe": {
       "ok": true,
-      "checkedAt": "2026-11-04T15:27:04.834Z",
+      "checkedAt": "2026-11-05T00:23:25.076Z",
       "latestDate": "2026-11-03",
       "message": "uk_inflation, uk_nominal, uk_real, uk_ois_fwd, uk_ois"
     },
     "bundesbank": {
       "ok": true,
-      "checkedAt": "2026-11-04T15:27:04.834Z",
+      "checkedAt": "2026-11-05T00:23:25.076Z",
       "latestDate": "2026-11-04"
     },
     "ust": {
       "ok": true,
-      "checkedAt": "2026-11-04T15:27:04.834Z",
-      "latestDate": "2026-11-03"
+      "checkedAt": "2026-11-05T00:23:25.076Z",
+      "latestDate": "2026-11-04"
     },
     "dmo": {
       "ok": true,
-      "checkedAt": "2026-11-04T15:27:04.834Z",
-      "latestDate": "2026-11-04",
+      "checkedAt": "2026-11-05T00:23:25.076Z",
+      "latestDate": "2026-11-05",
       "message": "102 gilts, 0 with yields; prices unavailable: https://www.dmo.gov.uk/data/XmlDataReport?reportCode=D10B: no usable rows"
     },
     "gilt_history": {
       "ok": true,
-      "checkedAt": "2026-11-04T15:27:04.834Z",
-      "latestDate": "2026-11-03",
-      "message": "giltsyield price time 2026-11-04 15:20; prices are intraday; close not recorded yet"
+      "checkedAt": "2026-11-05T00:23:25.076Z",
+      "latestDate": "2026-11-04",
+      "message": "giltsyield price time 2026-11-04 17:00; giltsyield 2026-11-04: 102 gilts"
     },
     "boe_fx": {
       "ok": true,
-      "checkedAt": "2026-11-04T15:27:04.834Z",
+      "checkedAt": "2026-11-05T00:23:25.076Z",
       "latestDate": "2026-11-03"
     },
     "cftc": {
       "ok": true,
-      "checkedAt": "2026-11-04T15:27:04.834Z",
+      "checkedAt": "2026-11-05T00:23:25.076Z",
       "latestDate": "2026-10-27",
       "message": "CHF, EUR, JPY, GBP"
     },
     "macro": {
       "ok": true,
-      "checkedAt": "2026-11-04T15:27:04.834Z",
+      "checkedAt": "2026-11-05T00:23:25.076Z",
       "latestDate": "2026-11-01",
-      "message": "37 series; 1 failed: core.EA (ecb ICP/M.U2.N.XEF000.4.ANR): 504 Gateway Time-out from https://data-api.ecb.europa.eu/service/data/ICP/M.U2.N.XEF000.4.ANR?format=csvdata&startPeriod=2012-01"
+      "message": "37 series"
     },
     "commodities": {
       "ok": true,
-      "checkedAt": "2026-11-04T15:27:04.834Z",
-      "latestDate": "2026-11-04",
+      "checkedAt": "2026-11-05T00:23:25.076Z",
+      "latestDate": "2026-11-05",
       "message": "4 prices, 8 positioning"
     },
     "boe_policy": {
       "ok": true,
-      "checkedAt": "2026-11-04T15:27:04.834Z",
+      "checkedAt": "2026-11-05T00:23:25.076Z",
       "latestDate": "2026-11-03",
       "message": "10 upcoming MPC dates (next 2026-11-05)"
     },
     "rates": {
       "ok": true,
-      "checkedAt": "2026-11-04T15:27:04.834Z",
+      "checkedAt": "2026-11-05T00:23:25.076Z",
       "latestDate": "2026-11-04",
       "message": "14 series"
     },
     "stocks": {
       "ok": true,
-      "checkedAt": "2026-11-04T15:27:04.834Z",
-      "latestDate": "2026-11-04",
+      "checkedAt": "2026-11-05T00:23:25.076Z",
+      "latestDate": "2026-11-05",
       "message": "346/353 UK, European and Asian stocks, sector ETFs and commodity futures"
     }
   }
